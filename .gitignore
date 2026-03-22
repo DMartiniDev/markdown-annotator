@@ -1,0 +1,17 @@
+# Turborepo
+.turbo
+
+# Build outputs
+**/dist
+**/coverage
+
+# Dependencies
+node_modules
+.pnpm-store
+
+# OS
+.DS_Store
+
+# Env
+.env
+.env.*
