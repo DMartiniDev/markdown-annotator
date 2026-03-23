@@ -35,6 +35,7 @@ export function MarkdownInputScreen({ state, dispatch }: Props) {
       const result = e.target?.result
       if (typeof result === 'string') {
         dispatch({ type: 'SET_MARKDOWN', payload: result })
+        setMode('type')
         setError(null)
       }
       activeReaderRef.current = null

@@ -83,7 +83,7 @@ export function AnnotateEntryDialog({ open, initialValues, onSubmit, onClose }: 
           {/* Terms */}
           <div className="space-y-1">
             <Label>Terms</Label>
-            <div className="space-y-2">
+            <div className="max-h-[168px] overflow-y-auto space-y-2 pr-1">
               {fields.map((field, index) => (
                 <div key={field.id} className="flex gap-2">
                   <Input

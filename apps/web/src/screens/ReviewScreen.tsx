@@ -1,19 +1,18 @@
-import { useRef, useState } from 'react'
-import { Download, Upload } from 'lucide-react'
-import type { AppState, Action, MatchInfo } from '@/types'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Badge } from '@/components/ui/badge'
-import { cn } from '@/lib/utils'
-import { SessionSchema, formatZodError } from '@/lib/schemas'
-import { downloadJson, downloadText } from '@/lib/export'
-import { annotateMarkdownBatch } from '@index-helper2/markdown-annotator'
-import type { AnnotateInfo } from '@index-helper2/markdown-annotator'
+import { useEffect, useRef, useState } from "react";
+import { Download } from "lucide-react";
+import type { AppState, Action, MatchInfo } from "@/types";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
+import { downloadJson, downloadText } from "@/lib/export";
+import { annotateMarkdownBatch } from "@index-helper2/markdown-annotator";
+import type { AnnotateInfo } from "@index-helper2/markdown-annotator";
 
 interface Props {
-  state: AppState
-  dispatch: React.Dispatch<Action>
+  state: AppState;
+  dispatch: React.Dispatch<Action>;
 }
 
 // ---------------------------------------------------------------------------
@@ -22,25 +21,35 @@ interface Props {
 // ---------------------------------------------------------------------------
 
 interface MatchFormProps {
-  match: MatchInfo
-  onAccept: (values: { name: string; parent?: string; important: boolean }) => void
-  onSkip: () => void
+  match: MatchInfo;
+  onAccept: (values: {
+    name: string;
+    parent?: string;
+    important: boolean;
+  }) => void;
+  onSkip: () => void;
 }
 
 function MatchForm({ match, onAccept, onSkip }: MatchFormProps) {
-  const [name, setName] = useState(match.name)
-  const [parent, setParent] = useState(match.parent ?? '')
-  const [important, setImportant] = useState(match.important)
+  const [name, setName] = useState(match.name);
+  const [parent, setParent] = useState(match.parent ?? "");
+  const [important, setImportant] = useState(match.important);
+  const markRef = useRef<HTMLElement>(null);
+
+  // Scroll the highlighted term into view whenever this match is displayed
+  useEffect(() => {
+    markRef.current?.scrollIntoView({ block: "center", behavior: "smooth" });
+  }, []);
 
   function handleAccept() {
     onAccept({
       name: name.trim() || match.sourceName,
       parent: parent.trim() || undefined,
       important,
-    })
+    });
   }
 
-  const alreadyDecided = match.status !== 'pending'
+  const alreadyDecided = match.status !== "pending";
 
   return (
     <div className="space-y-4">
@@ -49,7 +58,10 @@ function MatchForm({ match, onAccept, onSkip }: MatchFormProps) {
           <, >, & — React escapes them automatically when rendered as text nodes. */}
       <div className="h-40 overflow-y-auto rounded-md border border-input bg-background px-3 py-2 font-mono text-sm whitespace-pre-wrap break-words text-foreground">
         <span>{match.contextBefore}</span>
-        <mark className="bg-yellow-200 dark:bg-yellow-800 text-foreground rounded px-0.5">
+        <mark
+          ref={markRef}
+          className="bg-yellow-200 dark:bg-yellow-800 text-foreground rounded px-0.5"
+        >
           {match.matchedTerm}
         </mark>
         <span>{match.contextAfter}</span>
@@ -58,7 +70,9 @@ function MatchForm({ match, onAccept, onSkip }: MatchFormProps) {
       {/* Badges */}
       <div className="flex gap-2 flex-wrap">
         {match.footnote && (
-          <Badge variant="outline" className="text-xs">in footnote</Badge>
+          <Badge variant="outline" className="text-xs">
+            in footnote
+          </Badge>
         )}
         <Badge variant="secondary" className="text-xs font-mono">
           {match.matchedTerm}
@@ -72,7 +86,7 @@ function MatchForm({ match, onAccept, onSkip }: MatchFormProps) {
           <Input
             id="match-name"
             value={name}
-            onChange={e => setName(e.target.value)}
+            onChange={(e) => setName(e.target.value)}
             placeholder={match.sourceName}
             disabled={alreadyDecided}
           />
@@ -80,13 +94,16 @@ function MatchForm({ match, onAccept, onSkip }: MatchFormProps) {
 
         <div className="space-y-1">
           <Label htmlFor="match-parent">
-            Parent <span className="text-muted-foreground font-normal">(optional)</span>
+            Parent{" "}
+            <span className="text-muted-foreground font-normal">
+              (optional)
+            </span>
           </Label>
           <Input
             id="match-parent"
             value={parent}
-            onChange={e => setParent(e.target.value)}
-            placeholder={match.sourceParent ?? 'none'}
+            onChange={(e) => setParent(e.target.value)}
+            placeholder={match.sourceParent ?? "none"}
             disabled={alreadyDecided}
           />
         </div>
@@ -96,11 +113,14 @@ function MatchForm({ match, onAccept, onSkip }: MatchFormProps) {
             type="checkbox"
             id="match-important"
             checked={important}
-            onChange={e => setImportant(e.target.checked)}
+            onChange={(e) => setImportant(e.target.checked)}
             disabled={alreadyDecided}
             className="h-4 w-4 rounded border-input accent-primary"
           />
-          <Label htmlFor="match-important" className="font-normal cursor-pointer">
+          <Label
+            htmlFor="match-important"
+            className="font-normal cursor-pointer"
+          >
             Important
           </Label>
         </div>
@@ -109,8 +129,14 @@ function MatchForm({ match, onAccept, onSkip }: MatchFormProps) {
       {/* Decision buttons */}
       {alreadyDecided ? (
         <p className="text-sm text-muted-foreground">
-          This match was{' '}
-          <span className={match.status === 'accepted' ? 'text-green-600' : 'text-muted-foreground'}>
+          This match was{" "}
+          <span
+            className={
+              match.status === "accepted"
+                ? "text-green-600"
+                : "text-muted-foreground"
+            }
+          >
             {match.status}
           </span>
           .
@@ -126,7 +152,7 @@ function MatchForm({ match, onAccept, onSkip }: MatchFormProps) {
         </div>
       )}
     </div>
-  )
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -134,58 +160,35 @@ function MatchForm({ match, onAccept, onSkip }: MatchFormProps) {
 // ---------------------------------------------------------------------------
 
 export function ReviewScreen({ state, dispatch }: Props) {
-  const [importError, setImportError] = useState<string | null>(null)
-  const [exportError, setExportError] = useState<string | null>(null)
-  const importInputRef = useRef<HTMLInputElement>(null)
+  const [exportError, setExportError] = useState<string | null>(null);
+  const activeItemRef = useRef<HTMLButtonElement>(null);
 
-  const { matches, currentMatchIndex } = state
-  const currentMatch = matches[currentMatchIndex]
+  const { matches, currentMatchIndex } = state;
+  const currentMatch = matches[currentMatchIndex];
 
-  const acceptedCount = matches.filter(m => m.status === 'accepted').length
-  const pendingCount = matches.filter(m => m.status === 'pending').length
-  const allDecided = matches.length > 0 && pendingCount === 0
+  const acceptedCount = matches.filter((m) => m.status === "accepted").length;
+  const pendingCount = matches.filter((m) => m.status === "pending").length;
+  const allDecided = matches.length > 0 && pendingCount === 0;
+
+  // Auto-scroll the match list to keep the active item visible
+  useEffect(() => {
+    activeItemRef.current?.scrollIntoView({ block: "nearest" });
+  }, [currentMatchIndex]);
 
   // ---------------------------------------------------------------------------
   // Accept / Skip handlers
   // ---------------------------------------------------------------------------
 
-  function handleAccept(values: { name: string; parent?: string; important: boolean }) {
-    dispatch({ type: 'ACCEPT_MATCH', payload: values })
+  function handleAccept(values: {
+    name: string;
+    parent?: string;
+    important: boolean;
+  }) {
+    dispatch({ type: "ACCEPT_MATCH", payload: values });
   }
 
   function handleSkip() {
-    dispatch({ type: 'SKIP_MATCH' })
-  }
-
-  // ---------------------------------------------------------------------------
-  // Import session
-  // ---------------------------------------------------------------------------
-
-  function handleImportFile(file: File | undefined) {
-    if (!file) return
-    setImportError(null)
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      const text = e.target?.result
-      if (typeof text !== 'string') {
-        setImportError('Failed to read file.')
-        return
-      }
-      try {
-        const json = JSON.parse(text)
-        const result = SessionSchema.safeParse(json)
-        if (!result.success) {
-          setImportError(formatZodError(result.error))
-          return
-        }
-        dispatch({ type: 'IMPORT_SESSION', payload: { matches: result.data.matchesInfo } })
-      } catch {
-        setImportError('Invalid JSON file.')
-      }
-    }
-    reader.onerror = () => setImportError('Failed to read file.')
-    reader.readAsText(file)
-    if (importInputRef.current) importInputRef.current.value = ''
+    dispatch({ type: "SKIP_MATCH" });
   }
 
   // ---------------------------------------------------------------------------
@@ -195,8 +198,8 @@ export function ReviewScreen({ state, dispatch }: Props) {
   function handleExportSession() {
     downloadJson(
       { markdown: state.markdown, matchesInfo: state.matches },
-      'session.json',
-    )
+      "session.json",
+    );
   }
 
   // ---------------------------------------------------------------------------
@@ -206,23 +209,23 @@ export function ReviewScreen({ state, dispatch }: Props) {
   // ---------------------------------------------------------------------------
 
   function handleExportMarkdown() {
-    setExportError(null)
+    setExportError(null);
     const entries: AnnotateInfo[] = matches
-      .filter(m => m.status === 'accepted')
-      .map(m => ({
+      .filter((m) => m.status === "accepted")
+      .map((m) => ({
         name: m.name,
         terms: [m.matchedTerm],
         parent: m.parent,
         isImportant: m.important,
         isFootnote: false,
-      }))
+      }));
 
-    const result = annotateMarkdownBatch(state.markdown, entries)
+    const result = annotateMarkdownBatch(state.markdown, entries);
     if (!result.ok) {
-      setExportError(result.error.message)
-      return
+      setExportError(result.error.message);
+      return;
     }
-    downloadText(result.value, 'annotated.md')
+    downloadText(result.value, "annotated.md");
   }
 
   // ---------------------------------------------------------------------------
@@ -233,21 +236,29 @@ export function ReviewScreen({ state, dispatch }: Props) {
     return (
       <div className="space-y-6">
         <div className="flex items-center gap-4">
-          <Button variant="outline" size="sm" onClick={() => dispatch({ type: 'BACK_TO_CONFIGURE' })}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => dispatch({ type: "BACK_TO_CONFIGURE" })}
+          >
             ← Back to Configure
           </Button>
           <h2 className="text-lg font-semibold">Review Matches</h2>
         </div>
         <p className="text-sm text-muted-foreground">No matches found.</p>
       </div>
-    )
+    );
   }
 
   return (
     <div className="space-y-4">
       {/* Header */}
       <div className="flex flex-wrap items-center gap-3">
-        <Button variant="outline" size="sm" onClick={() => dispatch({ type: 'BACK_TO_CONFIGURE' })}>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => dispatch({ type: "BACK_TO_CONFIGURE" })}
+        >
           ← Back to Configure
         </Button>
         <h2 className="text-lg font-semibold">Review Matches</h2>
@@ -257,27 +268,7 @@ export function ReviewScreen({ state, dispatch }: Props) {
             {acceptedCount} accepted · {pendingCount} pending
           </span>
 
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => importInputRef.current?.click()}
-          >
-            <Upload className="mr-1 h-3.5 w-3.5" />
-            Import session
-          </Button>
-          <input
-            ref={importInputRef}
-            type="file"
-            accept=".json"
-            className="hidden"
-            onChange={e => handleImportFile(e.target.files?.[0])}
-          />
-
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleExportSession}
-          >
+          <Button variant="outline" size="sm" onClick={handleExportSession}>
             <Download className="mr-1 h-3.5 w-3.5" />
             Save session
           </Button>
@@ -293,26 +284,31 @@ export function ReviewScreen({ state, dispatch }: Props) {
         </div>
       </div>
 
-      {importError && <p className="text-sm text-destructive">{importError}</p>}
       {exportError && <p className="text-sm text-destructive">{exportError}</p>}
 
       {/* Body: match list + current match form */}
-      <div className="flex gap-6">
-        {/* Left: match list */}
-        <div className="w-56 shrink-0 space-y-1 max-h-[600px] overflow-y-auto pr-1">
+      <div className="flex gap-6 items-stretch">
+        {/* Left: match list — height matches right column, scrollable */}
+        <div className="w-56 shrink-0 overflow-y-auto pr-1 self-stretch h-[426px] border-2 border-solid">
           {matches.map((match, index) => (
             <button
               key={match.id}
-              onClick={() => dispatch({ type: 'SET_CURRENT_INDEX', payload: index })}
+              ref={index === currentMatchIndex ? activeItemRef : null}
+              onClick={() =>
+                dispatch({ type: "SET_CURRENT_INDEX", payload: index })
+              }
               className={cn(
-                'w-full text-left rounded-md px-3 py-2 text-sm transition-colors',
+                "w-full text-left rounded-md px-3 py-2 text-sm transition-colors",
                 index === currentMatchIndex
-                  ? 'bg-primary text-primary-foreground'
-                  : 'hover:bg-muted',
+                  ? "bg-primary text-primary-foreground"
+                  : "hover:bg-muted",
               )}
             >
               <div className="flex items-center gap-2">
-                <StatusDot status={match.status} active={index === currentMatchIndex} />
+                <StatusDot
+                  status={match.status}
+                  active={index === currentMatchIndex}
+                />
                 <span className="truncate font-medium">{match.sourceName}</span>
               </div>
               <div className="truncate text-xs mt-0.5 opacity-70 font-mono">
@@ -331,39 +327,48 @@ export function ReviewScreen({ state, dispatch }: Props) {
               onSkip={handleSkip}
             />
           ) : (
-            <p className="text-sm text-muted-foreground">Select a match to review.</p>
+            <p className="text-sm text-muted-foreground">
+              Select a match to review.
+            </p>
           )}
         </div>
       </div>
 
       {allDecided && (
         <p className="text-sm text-green-600">
-          All matches reviewed. {acceptedCount > 0
+          All matches reviewed.{" "}
+          {acceptedCount > 0
             ? 'Click "Export .md" to download the annotated document.'
-            : 'No matches accepted — nothing to export.'}
+            : "No matches accepted — nothing to export."}
         </p>
       )}
     </div>
-  )
+  );
 }
 
 // ---------------------------------------------------------------------------
 // Status indicator dot
 // ---------------------------------------------------------------------------
 
-function StatusDot({ status, active }: { status: MatchInfo['status']; active: boolean }) {
+function StatusDot({
+  status,
+  active,
+}: {
+  status: MatchInfo["status"];
+  active: boolean;
+}) {
   return (
     <span
       className={cn(
-        'h-2 w-2 rounded-full shrink-0',
+        "h-2 w-2 rounded-full shrink-0",
         active
-          ? 'bg-primary-foreground'
-          : status === 'accepted'
-          ? 'bg-green-500'
-          : status === 'skipped'
-          ? 'bg-muted-foreground/40'
-          : 'bg-yellow-400',
+          ? "bg-primary-foreground"
+          : status === "accepted"
+            ? "bg-green-500"
+            : status === "skipped"
+              ? "bg-muted-foreground/40"
+              : "bg-yellow-400",
       )}
     />
-  )
+  );
 }

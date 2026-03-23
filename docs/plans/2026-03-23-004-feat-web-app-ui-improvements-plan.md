@@ -1,7 +1,7 @@
 ---
 title: "feat: Web App UI Improvements (7 items)"
 type: feat
-status: active
+status: completed
 date: 2026-03-23
 ---
 
@@ -11,13 +11,13 @@ Seven targeted improvements across all three screens of the annotation workflow.
 
 ## Acceptance Criteria
 
-- [ ] Screen 1: Uploading a file auto-switches to the text area view showing file contents
-- [ ] Screen 2 table: Columns ordered `Name → Parent → Terms` (was `Name → Terms → Parent`)
-- [ ] Screen 2 dialog: Parent field is truly optional — empty string is valid (no space hack)
-- [ ] Screen 2 dialog: Terms list shows 4 items then scrolls; dialog height stays fixed
-- [ ] Screen 3: Left match list is as tall as the right side and scrolls; auto-scrolls to selected item
-- [ ] Screen 3: Switching matches scrolls the context text area so the highlighted `<mark>` is visible
-- [ ] All screens: Import session button is always visible; importing navigates to Screen 3
+- [x] Screen 1: Uploading a file auto-switches to the text area view showing file contents
+- [x] Screen 2 table: Columns ordered `Name → Parent → Terms` (was `Name → Terms → Parent`)
+- [x] Screen 2 dialog: Parent field is truly optional — empty string is valid (no space hack)
+- [x] Screen 2 dialog: Terms list shows 4 items then scrolls; dialog height stays fixed
+- [x] Screen 3: Left match list is as tall as the right side and scrolls; auto-scrolls to selected item
+- [x] Screen 3: Switching matches scrolls the context text area so the highlighted `<mark>` is visible
+- [x] All screens: Import session button is always visible; importing navigates to Screen 3
 
 ## Implementation
 

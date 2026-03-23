@@ -254,8 +254,8 @@ export function ConfigureScreen({ state, dispatch }: Props) {
             <TableHeader>
               <TableRow>
                 <TableHead>Name</TableHead>
-                <TableHead>Terms</TableHead>
                 <TableHead>Parent</TableHead>
+                <TableHead>Terms</TableHead>
                 <TableHead className="w-[80px]" />
               </TableRow>
             </TableHeader>
@@ -263,6 +263,9 @@ export function ConfigureScreen({ state, dispatch }: Props) {
               {state.annotateEntries.map((entry, index) => (
                 <TableRow key={entry.id}>
                   <TableCell className="font-medium">{entry.name}</TableCell>
+                  <TableCell className="text-muted-foreground text-sm">
+                    {entry.parent ?? "—"}
+                  </TableCell>
                   <TableCell>
                     <div className="flex flex-wrap gap-1">
                       {entry.terms.map((term) => (
@@ -275,9 +278,6 @@ export function ConfigureScreen({ state, dispatch }: Props) {
                         </Badge>
                       ))}
                     </div>
-                  </TableCell>
-                  <TableCell className="text-muted-foreground text-sm">
-                    {entry.parent ?? "—"}
                   </TableCell>
                   <TableCell>
                     <div className="flex gap-1">

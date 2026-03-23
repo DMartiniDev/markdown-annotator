@@ -53,7 +53,7 @@ export const AnnotateEntryFormSchema = z.object({
     .array(z.object({ value: z.string().min(1, 'Term cannot be empty').max(200) }))
     .min(1, 'At least one term is required')
     .max(50, 'Maximum 50 terms'),
-  parent: z.string().min(1).max(200).optional(),
+  parent: z.string().max(200).optional(),
 })
 
 export type AnnotateEntryFormValues = z.infer<typeof AnnotateEntryFormSchema>
