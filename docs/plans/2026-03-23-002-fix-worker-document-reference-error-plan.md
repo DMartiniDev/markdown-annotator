@@ -1,7 +1,7 @@
 ---
 title: "fix: ReferenceError: document is not defined in Web Worker"
 type: fix
-status: active
+status: completed
 date: 2026-03-23
 ---
 

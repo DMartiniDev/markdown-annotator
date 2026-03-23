@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState } from 'react'
-import { Pencil, Trash2, Plus, Upload, Download, Loader2 } from 'lucide-react'
-import type { AppState, Action, WebAnnotateInfo } from '@/types'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
+import { useEffect, useRef, useState } from "react";
+import { Pencil, Trash2, Plus, Upload, Download, Loader2 } from "lucide-react";
+import type { AppState, Action, WebAnnotateInfo } from "@/types";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   Table,
   TableBody,
@@ -10,36 +10,38 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table'
-import { AnnotateEntryDialog } from '@/components/AnnotateEntryDialog'
-import type { AnnotateEntryFormValues } from '@/lib/schemas'
-import { AnnotationConfigSchema, formatZodError } from '@/lib/schemas'
-import { downloadJson } from '@/lib/export'
-import FindMatchesWorker from '../lib/find-matches.worker?worker'
-import type { WorkerResponse } from '@/lib/find-matches.worker'
+} from "@/components/ui/table";
+import { AnnotateEntryDialog } from "@/components/AnnotateEntryDialog";
+import type { AnnotateEntryFormValues } from "@/lib/schemas";
+import { AnnotationConfigSchema, formatZodError } from "@/lib/schemas";
+import { downloadJson } from "@/lib/export";
+import FindMatchesWorker from "../lib/find-matches.worker?worker";
+import type { WorkerResponse } from "@/lib/find-matches.worker";
 
 interface Props {
-  state: AppState
-  dispatch: React.Dispatch<Action>
+  state: AppState;
+  dispatch: React.Dispatch<Action>;
 }
 
 type DialogState =
-  | { mode: 'closed' }
-  | { mode: 'add' }
-  | { mode: 'edit'; index: number }
+  | { mode: "closed" }
+  | { mode: "add" }
+  | { mode: "edit"; index: number };
 
 export function ConfigureScreen({ state, dispatch }: Props) {
-  const [dialog, setDialog] = useState<DialogState>({ mode: 'closed' })
-  const [isProcessing, setIsProcessing] = useState(false)
-  const [processError, setProcessError] = useState<string | null>(null)
-  const [importError, setImportError] = useState<string | null>(null)
-  const workerRef = useRef<Worker | null>(null)
-  const importInputRef = useRef<HTMLInputElement>(null)
+  const [dialog, setDialog] = useState<DialogState>({ mode: "closed" });
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [processError, setProcessError] = useState<string | null>(null);
+  const [importError, setImportError] = useState<string | null>(null);
+  const workerRef = useRef<Worker | null>(null);
+  const importInputRef = useRef<HTMLInputElement>(null);
 
   // Terminate any in-flight worker on unmount
   useEffect(() => {
-    return () => { workerRef.current?.terminate() }
-  }, [])
+    return () => {
+      workerRef.current?.terminate();
+    };
+  }, []);
 
   // ---------------------------------------------------------------------------
   // Entry CRUD
@@ -49,32 +51,35 @@ export function ConfigureScreen({ state, dispatch }: Props) {
     const newEntry: WebAnnotateInfo = {
       id: crypto.randomUUID(),
       name: values.name,
-      terms: values.terms.map(t => t.value),
+      terms: values.terms.map((t) => t.value),
       parent: values.parent ?? undefined,
-    }
-    dispatch({ type: 'SET_ANNOTATE_ENTRIES', payload: [...state.annotateEntries, newEntry] })
-    setDialog({ mode: 'closed' })
+    };
+    dispatch({
+      type: "SET_ANNOTATE_ENTRIES",
+      payload: [...state.annotateEntries, newEntry],
+    });
+    setDialog({ mode: "closed" });
   }
 
   function handleEditSubmit(values: AnnotateEntryFormValues) {
-    if (dialog.mode !== 'edit') return
+    if (dialog.mode !== "edit") return;
     const updated = state.annotateEntries.map((entry, i) =>
       i === dialog.index
         ? {
             ...entry,
             name: values.name,
-            terms: values.terms.map(t => t.value),
+            terms: values.terms.map((t) => t.value),
             parent: values.parent ?? undefined,
           }
         : entry,
-    )
-    dispatch({ type: 'SET_ANNOTATE_ENTRIES', payload: updated })
-    setDialog({ mode: 'closed' })
+    );
+    dispatch({ type: "SET_ANNOTATE_ENTRIES", payload: updated });
+    setDialog({ mode: "closed" });
   }
 
   function handleDelete(index: number) {
-    const updated = state.annotateEntries.filter((_, i) => i !== index)
-    dispatch({ type: 'SET_ANNOTATE_ENTRIES', payload: updated })
+    const updated = state.annotateEntries.filter((_, i) => i !== index);
+    dispatch({ type: "SET_ANNOTATE_ENTRIES", payload: updated });
   }
 
   // ---------------------------------------------------------------------------
@@ -83,43 +88,51 @@ export function ConfigureScreen({ state, dispatch }: Props) {
 
   function handleExport() {
     downloadJson(
-      { annotateInfo: state.annotateEntries.map(({ name, terms, parent }) => ({ name, terms, parent })) },
-      'annotations.json',
-    )
+      {
+        annotateInfo: state.annotateEntries.map(({ name, terms, parent }) => ({
+          name,
+          terms,
+          parent,
+        })),
+      },
+      "annotations.json",
+    );
   }
 
   function handleImportFile(file: File | undefined) {
-    if (!file) return
-    setImportError(null)
-    const reader = new FileReader()
+    if (!file) return;
+    setImportError(null);
+    const reader = new FileReader();
     reader.onload = (e) => {
-      const text = e.target?.result
-      if (typeof text !== 'string') {
-        setImportError('Failed to read file.')
-        return
+      const text = e.target?.result;
+      if (typeof text !== "string") {
+        setImportError("Failed to read file.");
+        return;
       }
       try {
-        const json = JSON.parse(text)
-        const result = AnnotationConfigSchema.safeParse(json)
+        const json = JSON.parse(text);
+        const result = AnnotationConfigSchema.safeParse(json);
         if (!result.success) {
-          setImportError(formatZodError(result.error))
-          return
+          setImportError(formatZodError(result.error));
+          return;
         }
-        const entries: WebAnnotateInfo[] = result.data.annotateInfo.map(info => ({
-          id: crypto.randomUUID(),
-          name: info.name,
-          terms: [...info.terms],
-          parent: info.parent,
-        }))
-        dispatch({ type: 'SET_ANNOTATE_ENTRIES', payload: entries })
+        const entries: WebAnnotateInfo[] = result.data.annotateInfo.map(
+          (info) => ({
+            id: crypto.randomUUID(),
+            name: info.name,
+            terms: [...info.terms],
+            parent: info.parent,
+          }),
+        );
+        dispatch({ type: "SET_ANNOTATE_ENTRIES", payload: entries });
       } catch {
-        setImportError('Invalid JSON file.')
+        setImportError("Invalid JSON file.");
       }
-    }
-    reader.onerror = () => setImportError('Failed to read file.')
-    reader.readAsText(file)
+    };
+    reader.onerror = () => setImportError("Failed to read file.");
+    reader.readAsText(file);
     // Reset so the same file can be re-imported
-    if (importInputRef.current) importInputRef.current.value = ''
+    if (importInputRef.current) importInputRef.current.value = "";
   }
 
   // ---------------------------------------------------------------------------
@@ -127,37 +140,40 @@ export function ConfigureScreen({ state, dispatch }: Props) {
   // ---------------------------------------------------------------------------
 
   function handleProcess() {
-    if (isProcessing) return
+    if (isProcessing) return;
 
     // Terminate any stale worker
-    workerRef.current?.terminate()
+    workerRef.current?.terminate();
 
-    const worker = new FindMatchesWorker()
-    workerRef.current = worker
-    setIsProcessing(true)
-    setProcessError(null)
+    const worker = new FindMatchesWorker();
+
+    workerRef.current = worker;
+    setIsProcessing(true);
+    setProcessError(null);
 
     worker.onmessage = (e: MessageEvent<WorkerResponse>) => {
-      setIsProcessing(false)
-      workerRef.current = null
-      const response = e.data
-      if ('error' in response) {
-        setProcessError(response.error)
+      setIsProcessing(false);
+      workerRef.current = null;
+      const response = e.data;
+      if ("error" in response) {
+        setProcessError(response.error);
       } else {
-        dispatch({ type: 'SET_MATCHES', payload: response.matches })
-        dispatch({ type: 'GO_TO_SCREEN', payload: 'review' })
+        dispatch({ type: "SET_MATCHES", payload: response.matches });
+        dispatch({ type: "GO_TO_SCREEN", payload: "review" });
       }
-      worker.terminate()
-    }
-
+      worker.terminate();
+    };
     worker.onerror = (e) => {
-      setIsProcessing(false)
-      setProcessError(e.message ?? 'Worker error')
-      workerRef.current = null
-      worker.terminate()
-    }
+      setIsProcessing(false);
+      setProcessError(e.message ?? "Worker error");
+      workerRef.current = null;
+      worker.terminate();
+    };
 
-    worker.postMessage({ markdown: state.markdown, annotateEntries: state.annotateEntries })
+    worker.postMessage({
+      markdown: state.markdown,
+      annotateEntries: state.annotateEntries,
+    });
   }
 
   // ---------------------------------------------------------------------------
@@ -165,9 +181,11 @@ export function ConfigureScreen({ state, dispatch }: Props) {
   // ---------------------------------------------------------------------------
 
   const editingEntry =
-    dialog.mode === 'edit' ? state.annotateEntries[dialog.index] ?? null : null
+    dialog.mode === "edit"
+      ? (state.annotateEntries[dialog.index] ?? null)
+      : null;
 
-  const canProcess = state.annotateEntries.length > 0 && !isProcessing
+  const canProcess = state.annotateEntries.length > 0 && !isProcessing;
 
   // ---------------------------------------------------------------------------
   // Render
@@ -180,7 +198,7 @@ export function ConfigureScreen({ state, dispatch }: Props) {
         <Button
           variant="outline"
           size="sm"
-          onClick={() => dispatch({ type: 'BACK_TO_INPUT' })}
+          onClick={() => dispatch({ type: "BACK_TO_INPUT" })}
           disabled={isProcessing}
         >
           ← Back
@@ -190,7 +208,7 @@ export function ConfigureScreen({ state, dispatch }: Props) {
 
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-2">
-        <Button size="sm" onClick={() => setDialog({ mode: 'add' })}>
+        <Button size="sm" onClick={() => setDialog({ mode: "add" })}>
           <Plus className="mr-1 h-4 w-4" />
           Add Entry
         </Button>
@@ -209,7 +227,7 @@ export function ConfigureScreen({ state, dispatch }: Props) {
             type="file"
             accept=".json"
             className="hidden"
-            onChange={e => handleImportFile(e.target.files?.[0])}
+            onChange={(e) => handleImportFile(e.target.files?.[0])}
           />
           <Button
             variant="outline"
@@ -223,9 +241,7 @@ export function ConfigureScreen({ state, dispatch }: Props) {
         </div>
       </div>
 
-      {importError && (
-        <p className="text-sm text-destructive">{importError}</p>
-      )}
+      {importError && <p className="text-sm text-destructive">{importError}</p>}
 
       {/* Entry table */}
       {state.annotateEntries.length === 0 ? (
@@ -249,15 +265,19 @@ export function ConfigureScreen({ state, dispatch }: Props) {
                   <TableCell className="font-medium">{entry.name}</TableCell>
                   <TableCell>
                     <div className="flex flex-wrap gap-1">
-                      {entry.terms.map(term => (
-                        <Badge key={term} variant="secondary" className="text-xs">
+                      {entry.terms.map((term) => (
+                        <Badge
+                          key={term}
+                          variant="secondary"
+                          className="text-xs"
+                        >
                           {term}
                         </Badge>
                       ))}
                     </div>
                   </TableCell>
                   <TableCell className="text-muted-foreground text-sm">
-                    {entry.parent ?? '—'}
+                    {entry.parent ?? "—"}
                   </TableCell>
                   <TableCell>
                     <div className="flex gap-1">
@@ -265,7 +285,7 @@ export function ConfigureScreen({ state, dispatch }: Props) {
                         variant="ghost"
                         size="icon"
                         className="h-7 w-7"
-                        onClick={() => setDialog({ mode: 'edit', index })}
+                        onClick={() => setDialog({ mode: "edit", index })}
                         aria-label={`Edit ${entry.name}`}
                       >
                         <Pencil className="h-3.5 w-3.5" />
@@ -301,18 +321,18 @@ export function ConfigureScreen({ state, dispatch }: Props) {
               Processing…
             </>
           ) : (
-            'Process Document →'
+            "Process Document →"
           )}
         </Button>
       </div>
 
       {/* Add / Edit dialog */}
       <AnnotateEntryDialog
-        open={dialog.mode !== 'closed'}
+        open={dialog.mode !== "closed"}
         initialValues={editingEntry}
-        onSubmit={dialog.mode === 'add' ? handleAddSubmit : handleEditSubmit}
-        onClose={() => setDialog({ mode: 'closed' })}
+        onSubmit={dialog.mode === "add" ? handleAddSubmit : handleEditSubmit}
+        onClose={() => setDialog({ mode: "closed" })}
       />
     </div>
-  )
+  );
 }
