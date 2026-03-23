@@ -61,6 +61,23 @@ function collectMatchesForTerm(
     // Skip text nodes inside ignored container types (e.g. link text, cite body)
     if (ancestors.some(a => IGNORED_ANCESTOR_TYPES.has(a.type))) return
 
+    // Skip text nodes that are the content of an existing <kbd> tag.
+    // remark-parse splits inline <kbd>text</kbd> into three siblings:
+    //   html(<kbd...>), text(…), html(</kbd>)
+    // Detect this by checking whether the immediately preceding sibling is
+    // an opening-only <kbd> tag (no content, no closing tag in the value).
+    // This mirrors the identical guard in packages/markdown-annotator/src/annotate.ts.
+    const parent = ancestors[ancestors.length - 1] as { children?: Array<{ type: string; value?: string }> }
+    if (parent.children) {
+      const idx = parent.children.indexOf(node as unknown as typeof parent.children[0])
+      if (idx > 0) {
+        const prev = parent.children[idx - 1]
+        if (prev.type === 'html' && /^<kbd\b[^>]*>$/i.test((prev.value ?? '').trim())) {
+          return // inside an existing <kbd> tag — skip
+        }
+      }
+    }
+
     const inFootnote = ancestors.some(a => a.type === 'footnoteDefinition')
     const nodeDocOffset = node.position?.start.offset ?? 0
 

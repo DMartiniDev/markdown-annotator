@@ -85,6 +85,27 @@ describe('findMatches', () => {
     expect(matches[1].sourceName).toBe('Beta')
   })
 
+  describe('skip: existing kbd tags', () => {
+    it('does not match a term already inside <kbd class="indexEntrytct">', () => {
+      const md = `<kbd title="x" class="indexEntrytct" entryText="x">AI</kbd>`
+      const matches = findMatches(md, [entry({ terms: ['AI'] })])
+      expect(matches).toHaveLength(0)
+    })
+
+    it('does not match a term already inside any <kbd> class', () => {
+      const md = `<kbd class="enlacetct">AI</kbd>`
+      const matches = findMatches(md, [entry({ terms: ['AI'] })])
+      expect(matches).toHaveLength(0)
+    })
+
+    it('still matches the same term outside existing <kbd> tags', () => {
+      const md = `<kbd class="indexEntrytct" entryText="x">AI</kbd> and AI is also here`
+      const matches = findMatches(md, [entry({ terms: ['AI'] })])
+      expect(matches).toHaveLength(1)
+      expect(matches[0].contextAfter).toContain('also here')
+    })
+  })
+
   describe('longest-term-first matching', () => {
     it('uses the longest term when it is found in the document', () => {
       const md = 'Artificial Intelligence and AI are related'
