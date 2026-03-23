@@ -15,6 +15,7 @@ import { AnnotateEntryDialog } from "@/components/AnnotateEntryDialog";
 import type { AnnotateEntryFormValues } from "@/lib/schemas";
 import { AnnotationConfigSchema, formatZodError } from "@/lib/schemas";
 import { downloadJson } from "@/lib/export";
+import { timestampPrefix } from "@/lib/timestamp";
 import FindMatchesWorker from "../lib/find-matches.worker?worker";
 import type { WorkerResponse } from "@/lib/find-matches.worker";
 
@@ -95,7 +96,7 @@ export function ConfigureScreen({ state, dispatch }: Props) {
           parent,
         })),
       },
-      "annotations.json",
+      `${timestampPrefix()}_annotations.json`,
     );
   }
 

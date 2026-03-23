@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { downloadJson, downloadText } from "@/lib/export";
+import { timestampPrefix } from "@/lib/timestamp";
 import { annotateMarkdownBatch } from "@index-helper2/markdown-annotator";
 import type { AnnotateInfo } from "@index-helper2/markdown-annotator";
 
@@ -198,7 +199,7 @@ export function ReviewScreen({ state, dispatch }: Props) {
   function handleExportSession() {
     downloadJson(
       { markdown: state.markdown, matchesInfo: state.matches },
-      "session.json",
+      `${timestampPrefix()}_session.json`,
     );
   }
 
