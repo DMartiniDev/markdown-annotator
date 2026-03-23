@@ -42,6 +42,7 @@ export type Action =
   | { type: 'SET_MATCHES'; payload: MatchInfo[] }
   | { type: 'ACCEPT_MATCH'; payload: { name: string; parent?: string; important: boolean } }
   | { type: 'SKIP_MATCH' }
+  | { type: 'UNSKIP_MATCH' }
   | { type: 'SET_CURRENT_INDEX'; payload: number }
   | { type: 'IMPORT_SESSION'; payload: { matches: MatchInfo[] } }
   | { type: 'GO_TO_SCREEN'; payload: Screen }
@@ -85,11 +86,21 @@ export function appReducer(state: AppState, action: Action): AppState {
     case 'SKIP_MATCH': {
       const updated = state.matches.map((m, i) =>
         i === state.currentMatchIndex
-          ? { ...m, name: '', terms: [], parent: undefined, important: false, status: 'skipped' as MatchStatus }
+          ? { ...m, name: '', parent: undefined, important: false, status: 'skipped' as MatchStatus }
           : m,
       )
       const nextIndex = findNextPendingIndex(updated, state.currentMatchIndex)
       return { ...state, matches: updated, currentMatchIndex: nextIndex }
+    }
+
+    case 'UNSKIP_MATCH': {
+      const updated = state.matches.map((m, i) =>
+        i === state.currentMatchIndex
+          ? { ...m, name: m.sourceName, parent: m.sourceParent, important: false, status: 'pending' as MatchStatus }
+          : m,
+      )
+      // Do not advance index — user stays on the newly-restored match
+      return { ...state, matches: updated }
     }
 
     case 'SET_CURRENT_INDEX':
