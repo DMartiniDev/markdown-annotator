@@ -42,7 +42,7 @@ export type Action =
   | { type: 'SET_MATCHES'; payload: MatchInfo[] }
   | { type: 'ACCEPT_MATCH'; payload: { name: string; parent?: string; important: boolean } }
   | { type: 'SKIP_MATCH' }
-  | { type: 'UNSKIP_MATCH' }
+  | { type: 'RESET_MATCH' }
   | { type: 'SET_CURRENT_INDEX'; payload: number }
   | { type: 'IMPORT_SESSION'; payload: { matches: MatchInfo[] } }
   | { type: 'GO_TO_SCREEN'; payload: Screen }
@@ -93,7 +93,7 @@ export function appReducer(state: AppState, action: Action): AppState {
       return { ...state, matches: updated, currentMatchIndex: nextIndex }
     }
 
-    case 'UNSKIP_MATCH': {
+    case 'RESET_MATCH': {
       const updated = state.matches.map((m, i) =>
         i === state.currentMatchIndex
           ? { ...m, name: m.sourceName, parent: m.sourceParent, important: false, status: 'pending' as MatchStatus }

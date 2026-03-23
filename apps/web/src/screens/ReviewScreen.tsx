@@ -29,10 +29,10 @@ interface MatchFormProps {
     important: boolean;
   }) => void;
   onSkip: () => void;
-  onUnskip: () => void;
+  onReset: () => void;
 }
 
-function MatchForm({ match, onAccept, onSkip, onUnskip }: MatchFormProps) {
+function MatchForm({ match, onAccept, onSkip, onReset }: MatchFormProps) {
   const [name, setName] = useState(match.name);
   const [parent, setParent] = useState(match.parent ?? "");
   const [important, setImportant] = useState(match.important);
@@ -142,11 +142,9 @@ function MatchForm({ match, onAccept, onSkip, onUnskip }: MatchFormProps) {
             {match.status}
           </span>
           .
-          {match.status === "skipped" && (
-            <Button variant="outline" size="sm" onClick={onUnskip}>
-              Unskip
-            </Button>
-          )}
+          <Button variant="outline" size="sm" onClick={onReset}>
+            Reset
+          </Button>
         </p>
       ) : (
         <div className="flex gap-3 pt-1">
@@ -198,8 +196,8 @@ export function ReviewScreen({ state, dispatch }: Props) {
     dispatch({ type: "SKIP_MATCH" });
   }
 
-  function handleUnskip() {
-    dispatch({ type: "UNSKIP_MATCH" });
+  function handleReset() {
+    dispatch({ type: "RESET_MATCH" });
   }
 
   // ---------------------------------------------------------------------------
@@ -336,7 +334,7 @@ export function ReviewScreen({ state, dispatch }: Props) {
               match={currentMatch}
               onAccept={handleAccept}
               onSkip={handleSkip}
-              onUnskip={handleUnskip}
+              onReset={handleReset}
             />
           ) : (
             <p className="text-sm text-muted-foreground">
