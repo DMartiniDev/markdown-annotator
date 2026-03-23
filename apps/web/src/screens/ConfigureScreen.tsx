@@ -15,6 +15,7 @@ import { AnnotateEntryDialog } from '@/components/AnnotateEntryDialog'
 import type { AnnotateEntryFormValues } from '@/lib/schemas'
 import { AnnotationConfigSchema, formatZodError } from '@/lib/schemas'
 import { downloadJson } from '@/lib/export'
+import FindMatchesWorker from '../lib/find-matches.worker?worker'
 import type { WorkerResponse } from '@/lib/find-matches.worker'
 
 interface Props {
@@ -131,10 +132,7 @@ export function ConfigureScreen({ state, dispatch }: Props) {
     // Terminate any stale worker
     workerRef.current?.terminate()
 
-    const worker = new Worker(
-      new URL('../lib/find-matches.worker.ts', import.meta.url),
-      { type: 'module' },
-    )
+    const worker = new FindMatchesWorker()
     workerRef.current = worker
     setIsProcessing(true)
     setProcessError(null)
