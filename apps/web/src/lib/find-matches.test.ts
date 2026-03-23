@@ -85,15 +85,51 @@ describe('findMatches', () => {
     expect(matches[1].sourceName).toBe('Beta')
   })
 
-  it('finds matches for multiple terms in a single entry', () => {
-    const md = 'alpha and beta'
-    const matches = findMatches(md, [
-      entry({ name: 'AB', terms: ['alpha', 'beta'] }),
-    ])
-    expect(matches).toHaveLength(2)
-    expect(matches.every(m => m.sourceName === 'AB')).toBe(true)
-    expect(matches.map(m => m.matchedTerm)).toContain('alpha')
-    expect(matches.map(m => m.matchedTerm)).toContain('beta')
+  describe('longest-term-first matching', () => {
+    it('uses the longest term when it is found in the document', () => {
+      const md = 'Artificial Intelligence and AI are related'
+      const matches = findMatches(md, [
+        entry({ name: 'AI', terms: ['Artificial Intelligence', 'AI'] }),
+      ])
+      expect(matches.every(m => m.matchedTerm === 'Artificial Intelligence')).toBe(true)
+      expect(matches.some(m => m.matchedTerm === 'AI')).toBe(false)
+    })
+
+    it('falls back to a shorter term when the longer one is absent', () => {
+      const md = 'We talk about AI here'
+      const matches = findMatches(md, [
+        entry({ name: 'AI', terms: ['Artificial Intelligence', 'AI'] }),
+      ])
+      expect(matches).toHaveLength(1)
+      expect(matches[0].matchedTerm).toBe('AI')
+    })
+
+    it('returns no matches when no term is found', () => {
+      const md = 'Nothing relevant here'
+      const matches = findMatches(md, [
+        entry({ name: 'AI', terms: ['Artificial Intelligence', 'AI'] }),
+      ])
+      expect(matches).toHaveLength(0)
+    })
+
+    it('collects all occurrences of the winning term', () => {
+      const md = 'AI is great. AI is everywhere.'
+      const matches = findMatches(md, [
+        entry({ name: 'AI', terms: ['Artificial Intelligence', 'AI'] }),
+      ])
+      expect(matches).toHaveLength(2)
+      expect(matches.every(m => m.matchedTerm === 'AI')).toBe(true)
+    })
+
+    it('tries equal-length terms in original entry order', () => {
+      // 'alpha' and 'omega' are both 5 chars; alpha comes first in the entry
+      const md = 'alpha omega'
+      const matches = findMatches(md, [
+        entry({ name: 'Test', terms: ['alpha', 'omega'] }),
+      ])
+      expect(matches).toHaveLength(1)
+      expect(matches[0].matchedTerm).toBe('alpha')
+    })
   })
 
   it('sets sourceName and sourceParent from entry', () => {

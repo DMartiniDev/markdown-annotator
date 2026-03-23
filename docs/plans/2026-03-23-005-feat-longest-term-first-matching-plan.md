@@ -1,7 +1,7 @@
 ---
 title: "feat: Longest-term-first matching with early exit per entry"
 type: feat
-status: active
+status: completed
 date: 2026-03-23
 ---
 
@@ -54,14 +54,14 @@ A term is considered found if it produces **at least one match** anywhere in the
 
 ## Acceptance Criteria
 
-- [ ] For an entry with `terms: ['Artificial Intelligence', 'AI']` and a document containing both, only "Artificial Intelligence" occurrences are returned (longer wins)
-- [ ] For an entry with `terms: ['Artificial Intelligence', 'AI']` and a document containing only "AI", "AI" occurrences are returned (fallback to shorter)
-- [ ] For an entry with `terms: ['Artificial Intelligence', 'AI']` and a document containing neither, no matches are returned
-- [ ] All occurrences of the winning term are collected (early exit is per-entry, not per-occurrence)
-- [ ] Equal-length terms are tried in their original `entry.terms` order
-- [ ] Existing tests that relied on all-terms-searched behaviour are updated to reflect the new semantics
-- [ ] New tests are added covering the longest-first and fallback scenarios
-- [ ] `pnpm --filter @index-helper2/web test` passes
+- [x] For an entry with `terms: ['Artificial Intelligence', 'AI']` and a document containing both, only "Artificial Intelligence" occurrences are returned (longer wins)
+- [x] For an entry with `terms: ['Artificial Intelligence', 'AI']` and a document containing only "AI", "AI" occurrences are returned (fallback to shorter)
+- [x] For an entry with `terms: ['Artificial Intelligence', 'AI']` and a document containing neither, no matches are returned
+- [x] All occurrences of the winning term are collected (early exit is per-entry, not per-occurrence)
+- [x] Equal-length terms are tried in their original `entry.terms` order
+- [x] Existing tests that relied on all-terms-searched behaviour are updated to reflect the new semantics
+- [x] New tests are added covering the longest-first and fallback scenarios
+- [x] `pnpm --filter @index-helper2/web test` passes
 
 ## Implementation
 

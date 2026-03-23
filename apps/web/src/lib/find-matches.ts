@@ -14,9 +14,13 @@ const CONTEXT_CHARS = 200
 const processor = createAnnotatorProcessor()
 
 /**
- * Scans `markdown` for every occurrence of every term across all annotateEntries.
- * Returns one MatchInfo per occurrence, in document order (entry order → term order
- * → occurrence order within that term).
+ * Scans `markdown` for occurrences of each entry's terms using a longest-first
+ * strategy. For each entry, terms are tried from longest to shortest. As soon
+ * as one term produces at least one match, its occurrences are collected and
+ * the remaining (shorter) terms are skipped.
+ *
+ * This prevents redundant overlapping matches (e.g. "Artificial Intelligence"
+ * superseding "AI" when both appear in the document).
  *
  * Does NOT mutate the AST; uses visitParents to read positions only.
  * Suitable for running inside a Web Worker.
@@ -29,54 +33,72 @@ export function findMatches(
   const matches: MatchInfo[] = []
 
   for (const entry of annotateEntries) {
-    for (const term of entry.terms) {
-      const re = buildRegex(term)
-
-      // --- text nodes ---
-      visitParents(tree, 'text', (node: Text, ancestors) => {
-        // Skip text nodes inside ignored container types (e.g. link text, cite body)
-        if (ancestors.some(a => IGNORED_ANCESTOR_TYPES.has(a.type))) return
-
-        const inFootnote = ancestors.some(a => a.type === 'footnoteDefinition')
-        const nodeDocOffset = node.position?.start.offset ?? 0
-
-        re.lastIndex = 0
-        let m: RegExpExecArray | null
-        while ((m = re.exec(node.value)) !== null) {
-          const matchedTerm = m[0]
-          const matchDocStart = nodeDocOffset + m.index
-          const matchDocEnd = matchDocStart + matchedTerm.length
-
-          matches.push(buildMatchInfo(entry, term, matchedTerm, inFootnote, {
-            before: markdown.slice(Math.max(0, matchDocStart - CONTEXT_CHARS), matchDocStart),
-            after: markdown.slice(matchDocEnd, Math.min(markdown.length, matchDocEnd + CONTEXT_CHARS)),
-          }))
-        }
-      })
-
-      // --- image alt text (a string property, not a text child node) ---
-      visitParents(tree, 'image', (node: Image, ancestors) => {
-        if (!node.alt) return
-
-        const inFootnote = ancestors.some(a => a.type === 'footnoteDefinition')
-        const imgDocOffset = node.position?.start.offset ?? 0
-
-        re.lastIndex = 0
-        let m: RegExpExecArray | null
-        while ((m = re.exec(node.alt)) !== null) {
-          const matchedTerm = m[0]
-
-          // Context: surrounding raw markdown around the image node itself
-          matches.push(buildMatchInfo(entry, term, matchedTerm, inFootnote, {
-            before: markdown.slice(Math.max(0, imgDocOffset - CONTEXT_CHARS), imgDocOffset),
-            after: markdown.slice(imgDocOffset, Math.min(markdown.length, imgDocOffset + CONTEXT_CHARS)),
-          }))
-        }
-      })
+    // Sort a copy longest-first; stable sort preserves original order for ties.
+    const sortedTerms = [...entry.terms].sort((a, b) => b.length - a.length)
+    for (const term of sortedTerms) {
+      const termMatches = collectMatchesForTerm(tree, markdown, entry, term)
+      if (termMatches.length > 0) {
+        matches.push(...termMatches)
+        break // Found matches — don't try shorter terms for this entry
+      }
     }
   }
 
   return matches
+}
+
+function collectMatchesForTerm(
+  tree: Root,
+  markdown: string,
+  entry: WebAnnotateInfo,
+  term: string,
+): MatchInfo[] {
+  const result: MatchInfo[] = []
+  const re = buildRegex(term)
+
+  // --- text nodes ---
+  visitParents(tree, 'text', (node: Text, ancestors) => {
+    // Skip text nodes inside ignored container types (e.g. link text, cite body)
+    if (ancestors.some(a => IGNORED_ANCESTOR_TYPES.has(a.type))) return
+
+    const inFootnote = ancestors.some(a => a.type === 'footnoteDefinition')
+    const nodeDocOffset = node.position?.start.offset ?? 0
+
+    re.lastIndex = 0
+    let m: RegExpExecArray | null
+    while ((m = re.exec(node.value)) !== null) {
+      const matchedTerm = m[0]
+      const matchDocStart = nodeDocOffset + m.index
+      const matchDocEnd = matchDocStart + matchedTerm.length
+
+      result.push(buildMatchInfo(entry, term, matchedTerm, inFootnote, {
+        before: markdown.slice(Math.max(0, matchDocStart - CONTEXT_CHARS), matchDocStart),
+        after: markdown.slice(matchDocEnd, Math.min(markdown.length, matchDocEnd + CONTEXT_CHARS)),
+      }))
+    }
+  })
+
+  // --- image alt text (a string property, not a text child node) ---
+  visitParents(tree, 'image', (node: Image, ancestors) => {
+    if (!node.alt) return
+
+    const inFootnote = ancestors.some(a => a.type === 'footnoteDefinition')
+    const imgDocOffset = node.position?.start.offset ?? 0
+
+    re.lastIndex = 0
+    let m: RegExpExecArray | null
+    while ((m = re.exec(node.alt)) !== null) {
+      const matchedTerm = m[0]
+
+      // Context: surrounding raw markdown around the image node itself
+      result.push(buildMatchInfo(entry, term, matchedTerm, inFootnote, {
+        before: markdown.slice(Math.max(0, imgDocOffset - CONTEXT_CHARS), imgDocOffset),
+        after: markdown.slice(imgDocOffset, Math.min(markdown.length, imgDocOffset + CONTEXT_CHARS)),
+      }))
+    }
+  })
+
+  return result
 }
 
 function buildMatchInfo(
