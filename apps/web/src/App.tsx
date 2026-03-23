@@ -30,7 +30,7 @@ export function App() {
         const json = JSON.parse(text)
         const result = SessionSchema.safeParse(json)
         if (!result.success) return
-        dispatch({ type: 'IMPORT_SESSION', payload: { matches: result.data.matchesInfo } })
+        dispatch({ type: 'IMPORT_SESSION', payload: { matches: result.data.matchesInfo, markdown: result.data.markdown } })
         dispatch({ type: 'GO_TO_SCREEN', payload: 'review' })
       } catch { /* ignore malformed JSON */ }
     }
