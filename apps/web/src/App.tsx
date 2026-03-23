@@ -1,15 +1,24 @@
 import { useReducer, useRef } from 'react'
-import { Upload } from 'lucide-react'
+import { Upload, Sun, Moon, Monitor } from 'lucide-react'
 import { appReducer, INITIAL_STATE } from '@/types'
 import { MarkdownInputScreen } from '@/screens/MarkdownInputScreen'
 import { ConfigureScreen } from '@/screens/ConfigureScreen'
 import { ReviewScreen } from '@/screens/ReviewScreen'
 import { Button } from '@/components/ui/button'
 import { SessionSchema } from '@/lib/schemas'
+import { useTheme, type Theme } from '@/hooks/use-theme'
+
+const NEXT_THEME: Record<Theme, Theme> = { system: 'light', light: 'dark', dark: 'system' }
+const THEME_LABEL: Record<Theme, string> = {
+  system: 'System theme',
+  light: 'Light theme',
+  dark: 'Dark theme',
+}
 
 export function App() {
   const [state, dispatch] = useReducer(appReducer, INITIAL_STATE)
   const importInputRef = useRef<HTMLInputElement>(null)
+  const { theme, setTheme } = useTheme()
 
   function handleImportSession(file: File | undefined) {
     if (!file) return
@@ -39,7 +48,7 @@ export function App() {
             <code className="rounded bg-muted px-1 py-0.5 text-xs">&lt;kbd&gt;</code> index tags.
           </p>
         </div>
-        <div>
+        <div className="flex items-center gap-2">
           <Button
             variant="outline"
             size="sm"
@@ -55,6 +64,17 @@ export function App() {
             className="hidden"
             onChange={e => handleImportSession(e.target.files?.[0])}
           />
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setTheme(NEXT_THEME[theme])}
+            title={THEME_LABEL[theme]}
+            aria-label={THEME_LABEL[theme]}
+          >
+            {theme === 'light' && <Sun className="h-4 w-4" />}
+            {theme === 'dark' && <Moon className="h-4 w-4" />}
+            {theme === 'system' && <Monitor className="h-4 w-4" />}
+          </Button>
         </div>
       </div>
 

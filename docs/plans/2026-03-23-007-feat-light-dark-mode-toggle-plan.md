@@ -1,7 +1,7 @@
 ---
 title: "feat: Light / dark mode toggle with system default and localStorage persistence"
 type: feat
-status: active
+status: completed
 date: 2026-03-23
 ---
 
@@ -132,15 +132,15 @@ const { theme, setTheme } = useTheme()
 
 ## Acceptance Criteria
 
-- [ ] App defaults to system OS preference when no value is stored in `localStorage`
-- [ ] Clicking the toggle cycles: system → light → dark → system
-- [ ] Explicit light or dark selection is saved to `localStorage` under key `"theme"`
-- [ ] Choosing "system" removes the `localStorage` entry (so OS changes are followed again)
-- [ ] Page reload restores the last explicitly chosen theme (or system default)
-- [ ] No flash of incorrect theme on page load for any of the three states
-- [ ] OS dark/light preference changes are reflected in real time when in "system" mode
-- [ ] Toggle button is visible on all three screens (Screen 1, 2, and 3)
-- [ ] Accessible: button has descriptive `aria-label` and `title`
+- [x] App defaults to system OS preference when no value is stored in `localStorage`
+- [x] Clicking the toggle cycles: system → light → dark → system
+- [x] Explicit light or dark selection is saved to `localStorage` under key `"theme"`
+- [x] Choosing "system" removes the `localStorage` entry (so OS changes are followed again)
+- [x] Page reload restores the last explicitly chosen theme (or system default)
+- [x] No flash of incorrect theme on page load for any of the three states
+- [x] OS dark/light preference changes are reflected in real time when in "system" mode
+- [x] Toggle button is visible on all three screens (Screen 1, 2, and 3)
+- [x] Accessible: button has descriptive `aria-label` and `title`
 
 ## Affected Files
 
