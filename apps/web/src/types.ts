@@ -46,7 +46,7 @@ export type Action =
   | { type: 'SKIP_MATCH' }
   | { type: 'RESET_MATCH' }
   | { type: 'SET_CURRENT_INDEX'; payload: number }
-  | { type: 'IMPORT_SESSION'; payload: { matches: MatchInfo[] } }
+  | { type: 'IMPORT_SESSION'; payload: { matches: MatchInfo[]; markdown: string } }
   | { type: 'GO_TO_SCREEN'; payload: Screen }
   | { type: 'BACK_TO_CONFIGURE' }
   | { type: 'BACK_TO_INPUT' }
@@ -113,8 +113,8 @@ export function appReducer(state: AppState, action: Action): AppState {
       return { ...state, currentMatchIndex: action.payload }
 
     case 'IMPORT_SESSION':
-      // Atomically replace matches + reset index
-      return { ...state, matches: action.payload.matches, currentMatchIndex: 0 }
+      // Atomically restore markdown + replace matches + reset index
+      return { ...state, markdown: action.payload.markdown, matches: action.payload.matches, currentMatchIndex: 0 }
 
     case 'GO_TO_SCREEN':
       return { ...state, screen: action.payload }
