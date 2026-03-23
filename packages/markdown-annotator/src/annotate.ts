@@ -23,13 +23,38 @@ export type Result<T, E = Error> =
 // Processor — built once and frozen for safe reuse across calls
 // ---------------------------------------------------------------------------
 
-const processor = unified()
-  .use(remarkParse)
-  .use(remarkFrontmatter)
-  .use(remarkGfm)
-  .use(remarkCite)
-  .use(remarkStringify)
-  .freeze()
+/**
+ * Node types that the annotator skips when walking the AST.
+ * Exported so consumers (e.g. findMatches in the web app) can apply the same
+ * skip logic without duplicating the list.
+ */
+export const IGNORED_NODE_TYPES = [
+  'inlineCode',
+  'code',
+  'html',
+  'cite',
+  'link',
+  'linkReference',
+  'footnoteReference',
+] as const
+
+/**
+ * Returns a new frozen unified processor configured with the same plugins used
+ * by annotateMarkdown / annotateMarkdownBatch.  Callers that only need to
+ * parse (e.g. findMatches) can call .parse() on the returned processor; the
+ * stringify step is only invoked when .stringify() or .process() are called.
+ */
+export function createAnnotatorProcessor() {
+  return unified()
+    .use(remarkParse)
+    .use(remarkFrontmatter)
+    .use(remarkGfm)
+    .use(remarkCite)
+    .use(remarkStringify)
+    .freeze()
+}
+
+const processor = createAnnotatorProcessor()
 
 // ---------------------------------------------------------------------------
 // Helpers
