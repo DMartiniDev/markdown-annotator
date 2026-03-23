@@ -1,7 +1,7 @@
 ---
 title: "feat: Deploy to GitHub Pages via GitHub Actions"
 type: feat
-status: active
+status: completed
 date: 2026-03-23
 origin: docs/brainstorms/2026-03-23-deploy-github-pages-brainstorm.md
 ---
@@ -12,11 +12,11 @@ Add a GitHub Actions workflow that automatically builds the pnpm monorepo and de
 
 ## Acceptance Criteria
 
-- [ ] Pushing to `main` triggers an automatic build and deploy to GitHub Pages
-- [ ] The local `packages/markdown-annotator` package is compiled before `apps/web` (Turborepo handles this)
-- [ ] The deployed app works correctly — all three screens, Web Worker, and dark mode
-- [ ] No changes required to `vite.config.ts` or any application code
-- [ ] After enabling Pages in repo settings, the site is accessible at `https://username.github.io/`
+- [x] Pushing to `main` triggers an automatic build and deploy to GitHub Pages
+- [x] The local `packages/markdown-annotator` package is compiled before `apps/web` (Turborepo handles this)
+- [x] The deployed app works correctly — all three screens, Web Worker, and dark mode
+- [x] No changes required to `vite.config.ts` or any application code
+- [x] After enabling Pages in repo settings, the site is accessible at `https://username.github.io/`
 
 ## Context
 
