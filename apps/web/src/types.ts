@@ -31,6 +31,7 @@ export type Screen = 'input' | 'configure' | 'review'
 export type AppState = {
   screen: Screen
   markdown: string
+  sourceFilename: string | null
   annotateEntries: WebAnnotateInfo[]
   matches: MatchInfo[]
   currentMatchIndex: number
@@ -38,6 +39,7 @@ export type AppState = {
 
 export type Action =
   | { type: 'SET_MARKDOWN'; payload: string }
+  | { type: 'SET_SOURCE_FILENAME'; payload: string | null }
   | { type: 'SET_ANNOTATE_ENTRIES'; payload: WebAnnotateInfo[] }
   | { type: 'SET_MATCHES'; payload: MatchInfo[] }
   | { type: 'ACCEPT_MATCH'; payload: { name: string; parent?: string; important: boolean } }
@@ -56,6 +58,7 @@ export type Action =
 export const INITIAL_STATE: AppState = {
   screen: 'input',
   markdown: '',
+  sourceFilename: null,
   annotateEntries: [],
   matches: [],
   currentMatchIndex: 0,
@@ -65,6 +68,9 @@ export function appReducer(state: AppState, action: Action): AppState {
   switch (action.type) {
     case 'SET_MARKDOWN':
       return { ...state, markdown: action.payload }
+
+    case 'SET_SOURCE_FILENAME':
+      return { ...state, sourceFilename: action.payload }
 
     case 'SET_ANNOTATE_ENTRIES':
       return { ...state, annotateEntries: action.payload }
@@ -118,8 +124,8 @@ export function appReducer(state: AppState, action: Action): AppState {
       return { ...state, screen: 'configure', matches: [], currentMatchIndex: 0 }
 
     case 'BACK_TO_INPUT':
-      // Atomically reset matches + index + change screen
-      return { ...state, screen: 'input', matches: [], currentMatchIndex: 0 }
+      // Atomically reset matches + index + change screen + clear source filename
+      return { ...state, screen: 'input', matches: [], currentMatchIndex: 0, sourceFilename: null }
 
     default:
       return state

@@ -234,7 +234,10 @@ export function ReviewScreen({ state, dispatch }: Props) {
       setExportError(result.error.message);
       return;
     }
-    downloadText(result.value, "annotated.md");
+    const stem = state.sourceFilename
+      ? state.sourceFilename.slice(0, state.sourceFilename.lastIndexOf('.')) || 'noname'
+      : 'noname'
+    downloadText(result.value, `${timestampPrefix()}_${stem}.md`);
   }
 
   // ---------------------------------------------------------------------------
