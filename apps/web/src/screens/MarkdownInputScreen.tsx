@@ -35,6 +35,7 @@ export function MarkdownInputScreen({ state, dispatch }: Props) {
       const result = e.target?.result
       if (typeof result === 'string') {
         dispatch({ type: 'SET_MARKDOWN', payload: result })
+        dispatch({ type: 'SET_SOURCE_FILENAME', payload: selectedFile.name })
         setMode('type')
         setError(null)
       }
