@@ -140,7 +140,7 @@ describe('matching rules', () => {
   it('matches term adjacent to comma', () => {
     const out = annotate('Cruz Roja, y más.\n')
     expect(out).toContain(KBD('Cruz Roja'))
-    expect(out).toContain('Cruz Roja,')  // comma preserved after kbd
+    expect(out).toContain('</kbd>,')  // comma preserved immediately after closing kbd tag
   })
 
   it('matches term inside parentheses', () => {

@@ -76,7 +76,15 @@ function buildKbd(matched: string, entry: AnnotateInfo, inFootnote: boolean): st
     ? ` entryParent="${escapeHtmlAttr(entry.parent)}"`
     : ''
 
-  return `<kbd title="${title}" class="${classes.join(' ')}" entryText="${escapeHtmlAttr(entry.name)}"${parentAttr}>${matched}</kbd>`
+  // `matched` is a raw text-node value from the AST and may contain <, >, &.
+  // Escape it so the injected <kbd> element is valid HTML regardless of input.
+  return `<kbd title="${title}" class="${classes.join(' ')}" entryText="${escapeHtmlAttr(entry.name)}"${parentAttr}>${escapeHtmlAttr(matched)}</kbd>`
+}
+
+// Minimal shape needed to check for an inline-HTML preceding sibling.
+type StackNode = {
+  type: string
+  children?: Array<{ type: string; value?: string }>
 }
 
 /**
@@ -87,8 +95,11 @@ function buildKbd(matched: string, entry: AnnotateInfo, inFootnote: boolean): st
  * 1. Image alt text — `node.alt` is a string field, unreachable by findAndReplace.
  * 2. Text nodes — via findAndReplace with an ignore list.
  *
- * The ignore list includes 'html' so that <kbd> nodes injected by earlier
- * entries (or a prior annotateMarkdownBatch call) are never re-annotated.
+ * The ignore list skips html nodes produced by earlier annotation passes and
+ * block-level HTML. However, for inline HTML (`<kbd>text</kbd>` on one line)
+ * remark-parse creates sibling nodes — `html`, `text`, `html` — not a
+ * parent-child relationship. The replacer callback therefore also checks the
+ * preceding sibling to avoid re-annotating text between existing <kbd> tags.
  */
 function annotateTree(tree: Root, entries: readonly AnnotateInfo[]): void {
   for (const entry of entries) {
@@ -104,13 +115,35 @@ function annotateTree(tree: Root, entries: readonly AnnotateInfo[]): void {
     })
 
     // Pass 2: all eligible text nodes
-    // match.stack provides the full ancestor chain so we can detect footnote context.
+    // matchInfo.stack is [...ancestors, textNode] — provides the full ancestor chain.
     const pairs = patterns.map(re => [
       re,
-      // The replace function receives: (matchedString, regexpMatchObject)
-      // regexpMatchObject.stack is [...ancestors, textNode]
-      (matched: string, matchInfo: { stack: { type: string }[] }) => {
-        const inFootnote = matchInfo.stack.some(n => n.type === 'footnoteDefinition')
+      (matched: string, matchInfo: { stack: StackNode[] }) => {
+        // Guard: skip text nodes that are between inline <kbd>…</kbd> siblings.
+        // remark-parse renders inline HTML as sibling html/text nodes, so the
+        // 'html' ignore list entry does not protect content between open/close tags.
+        const stack = matchInfo.stack
+        const parentNode = stack[stack.length - 2]
+        if (parentNode?.children) {
+          const textNode = stack[stack.length - 1]
+          const idx = parentNode.children.indexOf(textNode as typeof parentNode.children[0])
+          if (idx > 0) {
+            const prev = parentNode.children[idx - 1]
+            // Check for an OPENING-ONLY <kbd> tag (no content, no closing tag).
+            // When remark-parse tokenises inline `<kbd>text</kbd>`, it produces
+            // three sibling nodes: html(<kbd...>), text(…), html(</kbd>).
+            // The injected <kbd>…</kbd> html nodes from a prior pass are complete
+            // elements (open + content + close in one value string) — those do NOT
+            // match this pattern and must NOT block annotation of text after them.
+            if (prev !== undefined &&
+                prev.type === 'html' &&
+                /^<kbd\b[^>]*>$/i.test((prev.value ?? '').trim())) {
+              return false // text node is between inline <kbd> open/close tags
+            }
+          }
+        }
+
+        const inFootnote = stack.some(n => n.type === 'footnoteDefinition')
         return { type: 'html' as const, value: buildKbd(matched, entry, inFootnote) }
       },
     ] as const)
@@ -157,6 +190,9 @@ export function annotateMarkdownBatch(
   markdown: string,
   entries: readonly AnnotateInfo[],
 ): Result<string> {
+  if (typeof markdown !== 'string') {
+    return { ok: false, error: new Error('markdown must be a string') }
+  }
   try {
     const tree = processor.parse(markdown) as Root
     annotateTree(tree, entries)
