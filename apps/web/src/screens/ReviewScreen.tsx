@@ -29,9 +29,10 @@ interface MatchFormProps {
     important: boolean;
   }) => void;
   onSkip: () => void;
+  onReset: () => void;
 }
 
-function MatchForm({ match, onAccept, onSkip }: MatchFormProps) {
+function MatchForm({ match, onAccept, onSkip, onReset }: MatchFormProps) {
   const [name, setName] = useState(match.name);
   const [parent, setParent] = useState(match.parent ?? "");
   const [important, setImportant] = useState(match.important);
@@ -129,7 +130,7 @@ function MatchForm({ match, onAccept, onSkip }: MatchFormProps) {
 
       {/* Decision buttons */}
       {alreadyDecided ? (
-        <p className="text-sm text-muted-foreground">
+        <p className="text-sm text-muted-foreground flex items-center gap-2">
           This match was{" "}
           <span
             className={
@@ -141,6 +142,9 @@ function MatchForm({ match, onAccept, onSkip }: MatchFormProps) {
             {match.status}
           </span>
           .
+          <Button variant="outline" size="sm" onClick={onReset}>
+            Reset
+          </Button>
         </p>
       ) : (
         <div className="flex gap-3 pt-1">
@@ -190,6 +194,10 @@ export function ReviewScreen({ state, dispatch }: Props) {
 
   function handleSkip() {
     dispatch({ type: "SKIP_MATCH" });
+  }
+
+  function handleReset() {
+    dispatch({ type: "RESET_MATCH" });
   }
 
   // ---------------------------------------------------------------------------
@@ -319,13 +327,14 @@ export function ReviewScreen({ state, dispatch }: Props) {
           ))}
         </div>
 
-        {/* Right: per-match form — key forces remount on navigation */}
-        <div key={currentMatchIndex} className="flex-1 min-w-0">
+        {/* Right: per-match form — key forces remount on navigation or status change */}
+        <div key={`${currentMatchIndex}-${currentMatch?.status ?? ''}`} className="flex-1 min-w-0">
           {currentMatch ? (
             <MatchForm
               match={currentMatch}
               onAccept={handleAccept}
               onSkip={handleSkip}
+              onReset={handleReset}
             />
           ) : (
             <p className="text-sm text-muted-foreground">
