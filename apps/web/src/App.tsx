@@ -1,10 +1,11 @@
-import { useReducer, useRef } from 'react'
+import { useReducer, useRef, useState } from 'react'
 import { Upload, Sun, Moon, Monitor } from 'lucide-react'
 import { appReducer, INITIAL_STATE } from '@/types'
 import { MarkdownInputScreen } from '@/screens/MarkdownInputScreen'
 import { ConfigureScreen } from '@/screens/ConfigureScreen'
 import { ReviewScreen } from '@/screens/ReviewScreen'
 import { Button } from '@/components/ui/button'
+import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { SessionSchema } from '@/lib/schemas'
 import { useTheme, type Theme } from '@/hooks/use-theme'
 
@@ -18,6 +19,7 @@ const THEME_LABEL: Record<Theme, string> = {
 export function App() {
   const [state, dispatch] = useReducer(appReducer, INITIAL_STATE)
   const importInputRef = useRef<HTMLInputElement>(null)
+  const [sessionImportPending, setSessionImportPending] = useState(false)
   const { theme, setTheme } = useTheme()
 
   function handleImportSession(file: File | undefined) {
@@ -56,7 +58,7 @@ export function App() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => importInputRef.current?.click()}
+            onClick={() => setSessionImportPending(true)}
           >
             <Upload className="mr-1 h-3.5 w-3.5" />
             Import session
@@ -93,6 +95,17 @@ export function App() {
           <ReviewScreen state={state} dispatch={dispatch} />
         )}
       </div>
+
+      <ConfirmDialog
+        open={sessionImportPending}
+        title="Replace current session?"
+        description="Your current markdown, annotation config, and review decisions will be overwritten. Any unsaved progress will be lost."
+        onConfirm={() => {
+          setSessionImportPending(false)
+          importInputRef.current?.click()
+        }}
+        onCancel={() => setSessionImportPending(false)}
+      />
     </main>
   )
 }

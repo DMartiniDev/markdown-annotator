@@ -12,6 +12,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { AnnotateEntryDialog } from "@/components/AnnotateEntryDialog";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import type { AnnotateEntryFormValues } from "@/lib/schemas";
 import { AnnotationConfigSchema, formatZodError } from "@/lib/schemas";
 import { downloadJson } from "@/lib/export";
@@ -34,6 +35,7 @@ export function ConfigureScreen({ state, dispatch }: Props) {
   const [isProcessing, setIsProcessing] = useState(false);
   const [processError, setProcessError] = useState<string | null>(null);
   const [importError, setImportError] = useState<string | null>(null);
+  const [jsonImportPending, setJsonImportPending] = useState(false);
   const workerRef = useRef<Worker | null>(null);
   const importInputRef = useRef<HTMLInputElement>(null);
 
@@ -218,7 +220,14 @@ export function ConfigureScreen({ state, dispatch }: Props) {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => importInputRef.current?.click()}
+            disabled={isProcessing || dialog.mode !== "closed"}
+            onClick={() => {
+              if (state.annotateEntries.length > 0) {
+                setJsonImportPending(true)
+              } else {
+                importInputRef.current?.click()
+              }
+            }}
           >
             <Upload className="mr-1 h-4 w-4" />
             Import JSON
@@ -333,6 +342,18 @@ export function ConfigureScreen({ state, dispatch }: Props) {
         initialValues={editingEntry}
         onSubmit={dialog.mode === "add" ? handleAddSubmit : handleEditSubmit}
         onClose={() => setDialog({ mode: "closed" })}
+      />
+
+      {/* Import JSON confirmation */}
+      <ConfirmDialog
+        open={jsonImportPending}
+        title="Replace annotation config?"
+        description="Your current annotation entries will be overwritten by the imported file."
+        onConfirm={() => {
+          setJsonImportPending(false)
+          importInputRef.current?.click()
+        }}
+        onCancel={() => setJsonImportPending(false)}
       />
     </div>
   );
