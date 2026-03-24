@@ -1,5 +1,6 @@
 import { useReducer, useRef, useState } from 'react'
 import { Upload, Sun, Moon, Monitor } from 'lucide-react'
+import { Toaster } from 'sonner'
 import { appReducer, INITIAL_STATE } from '@/types'
 import { MarkdownInputScreen } from '@/screens/MarkdownInputScreen'
 import { ConfigureScreen } from '@/screens/ConfigureScreen'
@@ -106,6 +107,7 @@ export function App() {
         }}
         onCancel={() => setSessionImportPending(false)}
       />
+      <Toaster />
     </main>
   )
 }
