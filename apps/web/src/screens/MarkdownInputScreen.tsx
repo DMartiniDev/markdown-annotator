@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { toast } from 'sonner'
 import type { AppState, Action } from '@/types'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
@@ -15,7 +16,6 @@ interface Props {
 export function MarkdownInputScreen({ state, dispatch }: Props) {
   const [mode, setMode] = useState<'upload' | 'type'>(state.markdown ? 'type' : 'upload')
   const [isDragActive, setIsDragActive] = useState(false)
-  const [error, setError] = useState<string | null>(null)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
 
   const dragCounter = useRef(0)
@@ -37,13 +37,13 @@ export function MarkdownInputScreen({ state, dispatch }: Props) {
         dispatch({ type: 'SET_MARKDOWN', payload: result })
         dispatch({ type: 'SET_SOURCE_FILENAME', payload: selectedFile.name })
         setMode('type')
-        setError(null)
+        toast.success('File loaded!')
       }
       activeReaderRef.current = null
     }
 
     reader.onerror = () => {
-      if (!cancelled) setError('Failed to read file. Please try again.')
+      if (!cancelled) toast.error('Failed to read file. Please try again.')
       activeReaderRef.current = null
     }
 
@@ -66,16 +66,15 @@ export function MarkdownInputScreen({ state, dispatch }: Props) {
     }
 
     if (!ACCEPTED_EXTENSIONS.test(file.name)) {
-      setError('Please upload a .md or .markdown file.')
+      toast.error('Please upload a .md or .markdown file.')
       return
     }
 
     if (file.size > MAX_FILE_SIZE_BYTES) {
-      setError('File is too large. Maximum size is 2MB.')
+      toast.error('File is too large. Maximum size is 2MB.')
       return
     }
 
-    setError(null)
     setSelectedFile(file)
   }
 
@@ -115,7 +114,6 @@ export function MarkdownInputScreen({ state, dispatch }: Props) {
 
   function handleTextareaChange(e: React.ChangeEvent<HTMLTextAreaElement>) {
     dispatch({ type: 'SET_MARKDOWN', payload: e.target.value })
-    setError(null)
   }
 
   const canProceed = state.markdown.trim().length > 0
@@ -184,7 +182,7 @@ export function MarkdownInputScreen({ state, dispatch }: Props) {
           </div>
 
           {/* File loaded confirmation */}
-          {state.markdown && !error && selectedFile && (
+          {state.markdown && selectedFile && (
             <p className="text-sm text-muted-foreground">
               ✓ Loaded: <span className="font-medium">{selectedFile.name}</span>{' '}
               ({Math.round(selectedFile.size / 1024)}KB)
@@ -206,11 +204,6 @@ export function MarkdownInputScreen({ state, dispatch }: Props) {
             onChange={handleTextareaChange}
           />
         </div>
-      )}
-
-      {/* Error */}
-      {error && (
-        <p className="text-sm text-destructive">{error}</p>
       )}
 
       {/* Navigation */}

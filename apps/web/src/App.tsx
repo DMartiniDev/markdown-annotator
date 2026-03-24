@@ -1,6 +1,6 @@
 import { useReducer, useRef, useState } from 'react'
 import { Upload, Sun, Moon, Monitor } from 'lucide-react'
-import { Toaster } from 'sonner'
+import { Toaster, toast } from 'sonner'
 import { appReducer, INITIAL_STATE } from '@/types'
 import { MarkdownInputScreen } from '@/screens/MarkdownInputScreen'
 import { ConfigureScreen } from '@/screens/ConfigureScreen'
@@ -28,18 +28,27 @@ export function App() {
     const reader = new FileReader()
     reader.onload = (e) => {
       const text = e.target?.result
-      if (typeof text !== 'string') return
+      if (typeof text !== 'string') {
+        toast.error('Invalid session file.')
+        return
+      }
       try {
         const json = JSON.parse(text)
         const result = SessionSchema.safeParse(json)
-        if (!result.success) return
+        if (!result.success) {
+          toast.error('Invalid session file.')
+          return
+        }
         const annotateEntries = result.data.annotateEntries.map((entry) => ({
           ...entry,
           id: crypto.randomUUID(),
         }))
         dispatch({ type: 'IMPORT_SESSION', payload: { matches: result.data.matchesInfo, markdown: result.data.markdown, annotateEntries } })
         dispatch({ type: 'GO_TO_SCREEN', payload: 'review' })
-      } catch { /* ignore malformed JSON */ }
+        toast.success('Session imported!')
+      } catch {
+        toast.error('Invalid session file.')
+      }
     }
     reader.readAsText(file)
     if (importInputRef.current) importInputRef.current.value = ''

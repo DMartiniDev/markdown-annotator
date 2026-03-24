@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Pencil, Trash2, Plus, Upload, Download, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import type { AppState, Action, WebAnnotateInfo } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -34,7 +35,6 @@ export function ConfigureScreen({ state, dispatch }: Props) {
   const [dialog, setDialog] = useState<DialogState>({ mode: "closed" });
   const [isProcessing, setIsProcessing] = useState(false);
   const [processError, setProcessError] = useState<string | null>(null);
-  const [importError, setImportError] = useState<string | null>(null);
   const [jsonImportPending, setJsonImportPending] = useState(false);
   const workerRef = useRef<Worker | null>(null);
   const importInputRef = useRef<HTMLInputElement>(null);
@@ -100,23 +100,23 @@ export function ConfigureScreen({ state, dispatch }: Props) {
       },
       `${timestampPrefix()}_annotations.json`,
     );
+    toast.success("Annotations exported!");
   }
 
   function handleImportFile(file: File | undefined) {
     if (!file) return;
-    setImportError(null);
     const reader = new FileReader();
     reader.onload = (e) => {
       const text = e.target?.result;
       if (typeof text !== "string") {
-        setImportError("Failed to read file.");
+        toast.error("Failed to read file.");
         return;
       }
       try {
         const json = JSON.parse(text);
         const result = AnnotationConfigSchema.safeParse(json);
         if (!result.success) {
-          setImportError(formatZodError(result.error));
+          toast.error(formatZodError(result.error));
           return;
         }
         const entries: WebAnnotateInfo[] = result.data.annotateInfo.map(
@@ -128,11 +128,12 @@ export function ConfigureScreen({ state, dispatch }: Props) {
           }),
         );
         dispatch({ type: "SET_ANNOTATE_ENTRIES", payload: entries });
+        toast.success("Annotations imported!");
       } catch {
-        setImportError("Invalid JSON file.");
+        toast.error("Invalid JSON file.");
       }
     };
-    reader.onerror = () => setImportError("Failed to read file.");
+    reader.onerror = () => toast.error("Failed to read file.");
     reader.readAsText(file);
     // Reset so the same file can be re-imported
     if (importInputRef.current) importInputRef.current.value = "";
@@ -250,8 +251,6 @@ export function ConfigureScreen({ state, dispatch }: Props) {
           </Button>
         </div>
       </div>
-
-      {importError && <p className="text-sm text-destructive">{importError}</p>}
 
       {/* Entry table */}
       {state.annotateEntries.length === 0 ? (
