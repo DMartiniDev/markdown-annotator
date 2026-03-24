@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Download } from "lucide-react";
+import { toast } from "sonner";
 import type { AppState, Action, MatchInfo } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -167,6 +168,7 @@ function MatchForm({ match, onAccept, onSkip, onReset }: MatchFormProps) {
 export function ReviewScreen({ state, dispatch }: Props) {
   const [exportError, setExportError] = useState<string | null>(null);
   const activeItemRef = useRef<HTMLButtonElement>(null);
+  const hasAutoExported = useRef(false);
 
   const { matches, currentMatchIndex } = state;
   const currentMatch = matches[currentMatchIndex];
@@ -179,6 +181,17 @@ export function ReviewScreen({ state, dispatch }: Props) {
   useEffect(() => {
     activeItemRef.current?.scrollIntoView({ block: "nearest" });
   }, [currentMatchIndex]);
+
+  // Auto-export once when all matches are decided and at least one was accepted
+  useEffect(() => {
+    if (allDecided && acceptedCount > 0 && !hasAutoExported.current) {
+      hasAutoExported.current = true;
+      const ok = handleExportMarkdown();
+      if (ok) toast.success("Document exported!");
+    }
+    // handleExportMarkdown is stable for this one-shot use; ref guard makes stale closure safe
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allDecided, acceptedCount]);
 
   // ---------------------------------------------------------------------------
   // Accept / Skip handlers
@@ -221,7 +234,7 @@ export function ReviewScreen({ state, dispatch }: Props) {
   // Grouping by entry would silently drop per-match name/parent edits.
   // ---------------------------------------------------------------------------
 
-  function handleExportMarkdown() {
+  function handleExportMarkdown(): boolean {
     setExportError(null);
     const entries: AnnotateInfo[] = matches
       .filter((m) => m.status === "accepted")
@@ -236,12 +249,13 @@ export function ReviewScreen({ state, dispatch }: Props) {
     const result = annotateMarkdownBatch(state.markdown, entries);
     if (!result.ok) {
       setExportError(result.error.message);
-      return;
+      return false;
     }
     const stem = state.sourceFilename
       ? state.sourceFilename.slice(0, state.sourceFilename.lastIndexOf('.')) || 'noname'
       : 'noname'
     downloadText(result.value, `${timestampPrefix()}_${stem}.md`);
+    return true;
   }
 
   // ---------------------------------------------------------------------------
