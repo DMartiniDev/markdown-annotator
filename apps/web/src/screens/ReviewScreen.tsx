@@ -206,7 +206,11 @@ export function ReviewScreen({ state, dispatch }: Props) {
 
   function handleExportSession() {
     downloadJson(
-      { markdown: state.markdown, matchesInfo: state.matches },
+      {
+        markdown: state.markdown,
+        matchesInfo: state.matches,
+        annotateEntries: state.annotateEntries.map(({ name, terms, parent }) => ({ name, terms, parent })),
+      },
       `${timestampPrefix()}_session.json`,
     );
   }

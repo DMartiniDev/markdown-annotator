@@ -41,12 +41,12 @@ export type Action =
   | { type: 'SET_MARKDOWN'; payload: string }
   | { type: 'SET_SOURCE_FILENAME'; payload: string | null }
   | { type: 'SET_ANNOTATE_ENTRIES'; payload: WebAnnotateInfo[] }
-  | { type: 'SET_MATCHES'; payload: MatchInfo[] }
   | { type: 'ACCEPT_MATCH'; payload: { name: string; parent?: string; important: boolean } }
   | { type: 'SKIP_MATCH' }
   | { type: 'RESET_MATCH' }
   | { type: 'SET_CURRENT_INDEX'; payload: number }
-  | { type: 'IMPORT_SESSION'; payload: { matches: MatchInfo[]; markdown: string } }
+  | { type: 'IMPORT_SESSION'; payload: { matches: MatchInfo[]; markdown: string; annotateEntries: WebAnnotateInfo[] } }
+  | { type: 'MERGE_MATCHES'; payload: { newMatches: MatchInfo[]; priorMatches: MatchInfo[] } }
   | { type: 'GO_TO_SCREEN'; payload: Screen }
   | { type: 'BACK_TO_CONFIGURE' }
   | { type: 'BACK_TO_INPUT' }
@@ -74,10 +74,6 @@ export function appReducer(state: AppState, action: Action): AppState {
 
     case 'SET_ANNOTATE_ENTRIES':
       return { ...state, annotateEntries: action.payload }
-
-    case 'SET_MATCHES':
-      // Always reset index when matches change
-      return { ...state, matches: action.payload, currentMatchIndex: 0 }
 
     case 'ACCEPT_MATCH': {
       const updated = state.matches.map((m, i) =>
@@ -113,8 +109,24 @@ export function appReducer(state: AppState, action: Action): AppState {
       return { ...state, currentMatchIndex: action.payload }
 
     case 'IMPORT_SESSION':
-      // Atomically restore markdown + replace matches + reset index
-      return { ...state, markdown: action.payload.markdown, matches: action.payload.matches, currentMatchIndex: 0 }
+      // Atomically restore markdown + annotateEntries + replace matches + reset index
+      return { ...state, markdown: action.payload.markdown, annotateEntries: action.payload.annotateEntries, matches: action.payload.matches, currentMatchIndex: 0 }
+
+    case 'MERGE_MATCHES': {
+      // Merge new matches with prior decisions. Key: matchedTerm + '\0' + contextBefore.
+      // Only 'accepted' or 'skipped' decisions are carried over; 'pending' entries always reset.
+      // sourceName/sourceParent/footnote come from the new run — BACK_TO_CONFIGURE/BACK_TO_INPUT
+      // do not touch annotateEntries, so this is the correct source of truth.
+      const priorByKey = new Map(
+        action.payload.priorMatches.map((m) => [m.matchedTerm + '\0' + m.contextBefore, m])
+      )
+      const merged = action.payload.newMatches.map((m) => {
+        const prior = priorByKey.get(m.matchedTerm + '\0' + m.contextBefore)
+        if (!prior || prior.status === 'pending') return m
+        return { ...m, status: prior.status, name: prior.name, parent: prior.parent, important: prior.important }
+      })
+      return { ...state, matches: merged, currentMatchIndex: 0 }
+    }
 
     case 'GO_TO_SCREEN':
       return { ...state, screen: action.payload }

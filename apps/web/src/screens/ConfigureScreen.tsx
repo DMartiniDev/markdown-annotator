@@ -159,7 +159,7 @@ export function ConfigureScreen({ state, dispatch }: Props) {
       if ("error" in response) {
         setProcessError(response.error);
       } else {
-        dispatch({ type: "SET_MATCHES", payload: response.matches });
+        dispatch({ type: "MERGE_MATCHES", payload: { newMatches: response.matches, priorMatches: state.matches } });
         dispatch({ type: "GO_TO_SCREEN", payload: "review" });
       }
       worker.terminate();

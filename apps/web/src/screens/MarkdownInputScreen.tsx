@@ -13,7 +13,7 @@ interface Props {
 }
 
 export function MarkdownInputScreen({ state, dispatch }: Props) {
-  const [mode, setMode] = useState<'upload' | 'type'>('upload')
+  const [mode, setMode] = useState<'upload' | 'type'>(state.markdown ? 'type' : 'upload')
   const [isDragActive, setIsDragActive] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
