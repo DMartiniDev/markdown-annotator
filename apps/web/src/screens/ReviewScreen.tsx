@@ -166,7 +166,6 @@ function MatchForm({ match, onAccept, onSkip, onReset }: MatchFormProps) {
 // ---------------------------------------------------------------------------
 
 export function ReviewScreen({ state, dispatch }: Props) {
-  const [exportError, setExportError] = useState<string | null>(null);
   const activeItemRef = useRef<HTMLButtonElement>(null);
   const hasAutoExported = useRef(false);
 
@@ -226,6 +225,7 @@ export function ReviewScreen({ state, dispatch }: Props) {
       },
       `${timestampPrefix()}_session.json`,
     );
+    toast.success("Session saved!");
   }
 
   // ---------------------------------------------------------------------------
@@ -235,7 +235,6 @@ export function ReviewScreen({ state, dispatch }: Props) {
   // ---------------------------------------------------------------------------
 
   function handleExportMarkdown(): boolean {
-    setExportError(null);
     const entries: AnnotateInfo[] = matches
       .filter((m) => m.status === "accepted")
       .map((m) => ({
@@ -248,7 +247,7 @@ export function ReviewScreen({ state, dispatch }: Props) {
 
     const result = annotateMarkdownBatch(state.markdown, entries);
     if (!result.ok) {
-      setExportError(result.error.message);
+      toast.error(result.error.message);
       return false;
     }
     const stem = state.sourceFilename
@@ -305,7 +304,10 @@ export function ReviewScreen({ state, dispatch }: Props) {
 
           <Button
             size="sm"
-            onClick={handleExportMarkdown}
+            onClick={() => {
+              const ok = handleExportMarkdown();
+              if (ok) toast.success("Document exported!");
+            }}
             disabled={!allDecided || acceptedCount === 0}
           >
             <Download className="mr-1 h-3.5 w-3.5" />
@@ -313,8 +315,6 @@ export function ReviewScreen({ state, dispatch }: Props) {
           </Button>
         </div>
       </div>
-
-      {exportError && <p className="text-sm text-destructive">{exportError}</p>}
 
       {/* Body: match list + current match form */}
       <div className="flex gap-6 items-stretch">
