@@ -41,6 +41,7 @@ export const MatchInfoSchema = z.object({
 export const SessionSchema = z.object({
   markdown: z.string().max(2_000_000),
   matchesInfo: z.array(MatchInfoSchema).max(10_000),
+  annotateEntries: z.array(WebAnnotateInfoImportSchema).max(500).optional().default([]),
 })
 
 // ---------------------------------------------------------------------------
