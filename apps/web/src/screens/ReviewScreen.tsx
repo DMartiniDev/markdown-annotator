@@ -364,7 +364,7 @@ export function ReviewScreen({ state, dispatch }: Props) {
           {currentMatch ? (
             isEffectivelySuppressed(currentMatch, matches) ? (
               <p className="text-sm text-muted-foreground p-1">
-                This match is suppressed — a longer term from the same entry was accepted at this location.
+                This match is suppressed — another match was accepted at this location.
               </p>
             ) : (
               <MatchForm
