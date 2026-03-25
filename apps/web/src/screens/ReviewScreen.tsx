@@ -8,10 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { isEffectivelySuppressed } from "@/lib/match-utils";
-import { downloadJson, downloadText } from "@/lib/export";
+import { buildPositionAnnotatedMarkdown, downloadJson, downloadText } from "@/lib/export";
 import { timestampPrefix } from "@/lib/timestamp";
-import { annotateMarkdownBatch } from "@index-helper2/markdown-annotator";
-import type { AnnotateInfo } from "@index-helper2/markdown-annotator";
 
 interface Props {
   state: AppState;
@@ -235,22 +233,9 @@ export function ReviewScreen({ state, dispatch }: Props) {
 
   // ---------------------------------------------------------------------------
   // Export annotated markdown
-  // Inline adapter: one LibraryAnnotateInfo per accepted MatchInfo.
-  // Grouping by entry would silently drop per-match name/parent edits.
-  // ---------------------------------------------------------------------------
-
   function handleExportMarkdown(): boolean {
-    const entries: AnnotateInfo[] = matches
-      .filter((m) => m.status === "accepted")
-      .map((m) => ({
-        name: m.name,
-        terms: [m.matchedTerm],
-        parent: m.parent,
-        isImportant: m.important,
-        isFootnote: false,
-      }));
-
-    const result = annotateMarkdownBatch(state.markdown, entries);
+    const accepted = matches.filter(m => m.status === 'accepted')
+    const result = buildPositionAnnotatedMarkdown(state.markdown, accepted)
     if (!result.ok) {
       toast.error(result.error.message);
       return false;
