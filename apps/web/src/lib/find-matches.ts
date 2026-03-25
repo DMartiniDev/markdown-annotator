@@ -14,13 +14,13 @@ const CONTEXT_CHARS = 200
 const processor = createAnnotatorProcessor()
 
 /**
- * Scans `markdown` for occurrences of each entry's terms using a longest-first
- * strategy. For each entry, terms are tried from longest to shortest. As soon
- * as one term produces at least one match, its occurrences are collected and
- * the remaining (shorter) terms are skipped.
+ * Scans `markdown` for occurrences of each entry's terms.
+ * All terms for all entries are collected independently — no early exit.
  *
- * This prevents redundant overlapping matches (e.g. "Artificial Intelligence"
- * superseding "AI" when both appear in the document).
+ * Results are sorted by document position (docStart ascending) then by matched
+ * term length descending, so that longer terms at the same location appear
+ * first in the review queue. Dynamic suppression of shorter overlapping matches
+ * from the same entry is handled at review time via isEffectivelySuppressed.
  *
  * Does NOT mutate the AST; uses visitParents to read positions only.
  * Suitable for running inside a Web Worker.
@@ -33,16 +33,15 @@ export function findMatches(
   const matches: MatchInfo[] = []
 
   for (const entry of annotateEntries) {
-    // Sort a copy longest-first; stable sort preserves original order for ties.
-    const sortedTerms = [...entry.terms].sort((a, b) => b.length - a.length)
-    for (const term of sortedTerms) {
-      const termMatches = collectMatchesForTerm(tree, markdown, entry, term)
-      if (termMatches.length > 0) {
-        matches.push(...termMatches)
-        break // Found matches — don't try shorter terms for this entry
-      }
+    for (const term of entry.terms) {
+      matches.push(...collectMatchesForTerm(tree, markdown, entry, term))
     }
   }
+
+  // Sort by position ascending, then longer matched term first within the same position.
+  // Image alt text matches (docStart = -1) sort to the front; they do not participate
+  // in suppression and their order relative to text matches is irrelevant.
+  matches.sort((a, b) => a.docStart - b.docStart || b.matchedTerm.length - a.matchedTerm.length)
 
   return matches
 }
@@ -88,10 +87,10 @@ function collectMatchesForTerm(
       const matchDocStart = nodeDocOffset + m.index
       const matchDocEnd = matchDocStart + matchedTerm.length
 
-      result.push(buildMatchInfo(entry, term, matchedTerm, inFootnote, {
+      result.push(buildMatchInfo(entry, matchedTerm, inFootnote, {
         before: markdown.slice(Math.max(0, matchDocStart - CONTEXT_CHARS), matchDocStart),
         after: markdown.slice(matchDocEnd, Math.min(markdown.length, matchDocEnd + CONTEXT_CHARS)),
-      }))
+      }, matchDocStart, matchDocEnd))
     }
   })
 
@@ -107,11 +106,13 @@ function collectMatchesForTerm(
     while ((m = re.exec(node.alt)) !== null) {
       const matchedTerm = m[0]
 
-      // Context: surrounding raw markdown around the image node itself
-      result.push(buildMatchInfo(entry, term, matchedTerm, inFootnote, {
+      // Context: surrounding raw markdown around the image node itself.
+      // Image alt text positions cannot be reliably mapped to raw markdown byte offsets,
+      // so docStart/docEnd are set to -1 (sentinel) — these matches are excluded from suppression.
+      result.push(buildMatchInfo(entry, matchedTerm, inFootnote, {
         before: markdown.slice(Math.max(0, imgDocOffset - CONTEXT_CHARS), imgDocOffset),
         after: markdown.slice(imgDocOffset, Math.min(markdown.length, imgDocOffset + CONTEXT_CHARS)),
-      }))
+      }, -1, -1))
     }
   })
 
@@ -120,10 +121,11 @@ function collectMatchesForTerm(
 
 function buildMatchInfo(
   entry: WebAnnotateInfo,
-  _term: string,
   matchedTerm: string,
   footnote: boolean,
   context: { before: string; after: string },
+  docStart: number,
+  docEnd: number,
 ): MatchInfo {
   return {
     id: crypto.randomUUID(),
@@ -133,6 +135,9 @@ function buildMatchInfo(
     terms: [...entry.terms],
     parent: entry.parent,
     matchedTerm,
+    docStart,
+    docEnd,
+    entryId: entry.id,
     contextBefore: context.before,
     contextAfter: context.after,
     important: false,
