@@ -270,10 +270,10 @@ describe('findMatches', () => {
       expect(isEffectivelySuppressed(shorter, [longer, shorter])).toBe(false)
     })
 
-    it('returns false when the overlapping accepted match is from a different entry', () => {
+    it('returns true when the overlapping accepted match is from a different entry', () => {
       const longer = makeMatch({ matchedTerm: 'long term', docStart: 10, docEnd: 19, status: 'accepted', entryId: 'entry-2' })
       const shorter = makeMatch({ matchedTerm: 'term', docStart: 15, docEnd: 19, entryId: 'entry-1' })
-      expect(isEffectivelySuppressed(shorter, [longer, shorter])).toBe(false)
+      expect(isEffectivelySuppressed(shorter, [longer, shorter])).toBe(true)
     })
 
     it('returns false for a non-pending match', () => {
@@ -288,10 +288,10 @@ describe('findMatches', () => {
       expect(isEffectivelySuppressed(shorter, [longer, shorter])).toBe(false)
     })
 
-    it('returns false when entryId is empty (legacy session match)', () => {
+    it('returns true when entryId is empty (legacy session match) if an accepted match overlaps', () => {
       const longer = makeMatch({ matchedTerm: 'long term', docStart: 10, docEnd: 19, status: 'accepted', entryId: '' })
       const shorter = makeMatch({ matchedTerm: 'term', docStart: 15, docEnd: 19, entryId: '' })
-      expect(isEffectivelySuppressed(shorter, [longer, shorter])).toBe(false)
+      expect(isEffectivelySuppressed(shorter, [longer, shorter])).toBe(true)
     })
 
     it('returns false when overlapping ranges do not actually overlap', () => {
@@ -300,10 +300,22 @@ describe('findMatches', () => {
       expect(isEffectivelySuppressed(shorter, [longer, shorter])).toBe(false)
     })
 
-    it('returns false when the accepted match has a shorter term (should not suppress)', () => {
+    it('returns true when the accepted match has a shorter term (shorter accepted suppresses longer pending)', () => {
       const shorter = makeMatch({ matchedTerm: 'term', docStart: 10, docEnd: 14, status: 'accepted' })
       const longer = makeMatch({ matchedTerm: 'long term', docStart: 10, docEnd: 19 })
-      expect(isEffectivelySuppressed(longer, [shorter, longer])).toBe(false)
+      expect(isEffectivelySuppressed(longer, [shorter, longer])).toBe(true)
+    })
+
+    it('returns true when a pending match from entry-A is suppressed by an accepted match from entry-B', () => {
+      const entryB = makeMatch({ matchedTerm: 'neural network', docStart: 0, docEnd: 14, status: 'accepted', entryId: 'entry-B' })
+      const entryA = makeMatch({ matchedTerm: 'network', docStart: 7, docEnd: 14, entryId: 'entry-A' })
+      expect(isEffectivelySuppressed(entryA, [entryB, entryA])).toBe(true)
+    })
+
+    it('does not suppress itself (identity guard)', () => {
+      const match = makeMatch({ matchedTerm: 'term', docStart: 10, docEnd: 14, status: 'pending' })
+      // match appears in allMatches but is pending — should not self-suppress
+      expect(isEffectivelySuppressed(match, [match])).toBe(false)
     })
   })
 

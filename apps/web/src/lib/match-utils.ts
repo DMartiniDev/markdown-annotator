@@ -16,26 +16,25 @@ export function rangesOverlap(
 
 /**
  * Returns true if `match` is effectively suppressed — i.e. it is still pending
- * but another match from the same annotation entry has been accepted at an
- * overlapping position with a longer matched term.
+ * but any other accepted match overlaps its position, regardless of term length
+ * or which annotation entry it belongs to.
  *
  * Suppression is a derived, computed property; no new MatchStatus value is used.
  * Guards:
  *   - Non-pending matches are never suppressed (they already have a decision).
- *   - Image alt text matches (docStart < 0) and legacy-session matches (no entryId)
- *     are excluded from suppression to avoid incorrect behaviour.
+ *   - Image alt text matches (docStart < 0) are excluded from suppression;
+ *     rangesOverlap also returns false when either match has docStart = -1.
  */
 export function isEffectivelySuppressed(
   match: MatchInfo,
   allMatches: MatchInfo[],
 ): boolean {
   if (match.status !== 'pending') return false
-  if (!match.entryId || match.docStart < 0) return false
+  if (match.docStart < 0) return false
   return allMatches.some(
     (other) =>
+      other !== match &&
       other.status === 'accepted' &&
-      other.entryId === match.entryId &&
-      other.matchedTerm.length > match.matchedTerm.length &&
       rangesOverlap(other.docStart, other.docEnd, match.docStart, match.docEnd),
   )
 }
