@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { isEffectivelySuppressed } from "@/lib/match-utils";
 import { downloadJson, downloadText } from "@/lib/export";
 import { timestampPrefix } from "@/lib/timestamp";
 import { annotateMarkdownBatch } from "@index-helper2/markdown-annotator";
@@ -173,7 +174,11 @@ export function ReviewScreen({ state, dispatch }: Props) {
   const currentMatch = matches[currentMatchIndex];
 
   const acceptedCount = matches.filter((m) => m.status === "accepted").length;
-  const pendingCount = matches.filter((m) => m.status === "pending").length;
+  // Suppressed matches (pending but covered by an accepted longer match from the same entry)
+  // count as decided — exclude them from the actionable pending count.
+  const pendingCount = matches.filter(
+    (m) => m.status === "pending" && !isEffectivelySuppressed(m, matches),
+  ).length;
   const allDecided = matches.length > 0 && pendingCount === 0;
 
   // Auto-scroll the match list to keep the active item visible
@@ -320,43 +325,55 @@ export function ReviewScreen({ state, dispatch }: Props) {
       <div className="flex gap-6 items-stretch">
         {/* Left: match list — height matches right column, scrollable */}
         <div className="w-56 shrink-0 overflow-y-auto pr-1 self-stretch h-[426px] border-2 border-solid">
-          {matches.map((match, index) => (
-            <button
-              key={match.id}
-              ref={index === currentMatchIndex ? activeItemRef : null}
-              onClick={() =>
-                dispatch({ type: "SET_CURRENT_INDEX", payload: index })
-              }
-              className={cn(
-                "w-full text-left rounded-md px-3 py-2 text-sm transition-colors",
-                index === currentMatchIndex
-                  ? "bg-primary text-primary-foreground"
-                  : "hover:bg-muted",
-              )}
-            >
-              <div className="flex items-center gap-2">
-                <StatusDot
-                  status={match.status}
-                  active={index === currentMatchIndex}
-                />
-                <span className="truncate font-medium">{match.sourceName}</span>
-              </div>
-              <div className="truncate text-xs mt-0.5 opacity-70 font-mono">
-                {match.matchedTerm}
-              </div>
-            </button>
-          ))}
+          {matches.map((match, index) => {
+            const isActive = index === currentMatchIndex
+            const suppressed = isEffectivelySuppressed(match, matches)
+            return (
+              <button
+                key={match.id}
+                ref={isActive ? activeItemRef : null}
+                onClick={() =>
+                  dispatch({ type: "SET_CURRENT_INDEX", payload: index })
+                }
+                className={cn(
+                  "w-full text-left rounded-md px-3 py-2 text-sm transition-colors",
+                  isActive
+                    ? "bg-primary text-primary-foreground"
+                    : "hover:bg-muted",
+                  suppressed && !isActive && "opacity-40",
+                )}
+              >
+                <div className="flex items-center gap-2">
+                  <StatusDot
+                    status={match.status}
+                    active={isActive}
+                    suppressed={suppressed}
+                  />
+                  <span className="truncate font-medium">{match.sourceName}</span>
+                </div>
+                <div className="truncate text-xs mt-0.5 opacity-70 font-mono">
+                  {match.matchedTerm}
+                </div>
+              </button>
+            )
+          })}
         </div>
 
         {/* Right: per-match form — key forces remount on navigation or status change */}
         <div key={`${currentMatchIndex}-${currentMatch?.status ?? ''}`} className="flex-1 min-w-0">
           {currentMatch ? (
-            <MatchForm
-              match={currentMatch}
-              onAccept={handleAccept}
-              onSkip={handleSkip}
-              onReset={handleReset}
-            />
+            isEffectivelySuppressed(currentMatch, matches) ? (
+              <p className="text-sm text-muted-foreground p-1">
+                This match is suppressed — a longer term from the same entry was accepted at this location.
+              </p>
+            ) : (
+              <MatchForm
+                match={currentMatch}
+                onAccept={handleAccept}
+                onSkip={handleSkip}
+                onReset={handleReset}
+              />
+            )
           ) : (
             <p className="text-sm text-muted-foreground">
               Select a match to review.
@@ -384,9 +401,11 @@ export function ReviewScreen({ state, dispatch }: Props) {
 function StatusDot({
   status,
   active,
+  suppressed,
 }: {
   status: MatchInfo["status"];
   active: boolean;
+  suppressed?: boolean;
 }) {
   return (
     <span
@@ -394,11 +413,13 @@ function StatusDot({
         "h-2 w-2 rounded-full shrink-0",
         active
           ? "bg-primary-foreground"
-          : status === "accepted"
-            ? "bg-green-500"
-            : status === "skipped"
-              ? "bg-muted-foreground/40"
-              : "bg-yellow-400",
+          : suppressed
+            ? "bg-muted-foreground/30"
+            : status === "accepted"
+              ? "bg-green-500"
+              : status === "skipped"
+                ? "bg-muted-foreground/40"
+                : "bg-yellow-400",
       )}
     />
   );

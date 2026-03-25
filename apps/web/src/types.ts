@@ -1,6 +1,7 @@
 // ---------------------------------------------------------------------------
 // Web-layer types (separate from the library's readonly types)
 // ---------------------------------------------------------------------------
+import { isEffectivelySuppressed } from '@/lib/match-utils'
 
 export type WebAnnotateInfo = {
   id: string        // crypto.randomUUID() — for stable React keys
@@ -19,6 +20,9 @@ export type MatchInfo = {
   terms: string[]       // from the matched WebAnnotateInfo entry
   parent?: string       // editable on Screen 3; starts from sourceParent
   matchedTerm: string   // the specific term string found in the document
+  docStart: number      // raw markdown byte offset of match start; -1 for image alt text
+  docEnd: number        // raw markdown byte offset of match end; -1 for image alt text
+  entryId: string       // WebAnnotateInfo.id of the source annotation entry
   contextBefore: string // ~200 chars of markdown text before the match
   contextAfter: string  // ~200 chars of markdown text after the match
   important: boolean    // editable on Screen 3; default false
@@ -150,10 +154,10 @@ export function appReducer(state: AppState, action: Action): AppState {
  */
 function findNextPendingIndex(matches: MatchInfo[], currentIndex: number): number {
   for (let i = currentIndex + 1; i < matches.length; i++) {
-    if (matches[i].status === 'pending') return i
+    if (matches[i].status === 'pending' && !isEffectivelySuppressed(matches[i], matches)) return i
   }
   for (let i = 0; i < currentIndex; i++) {
-    if (matches[i].status === 'pending') return i
+    if (matches[i].status === 'pending' && !isEffectivelySuppressed(matches[i], matches)) return i
   }
   return currentIndex
 }
