@@ -33,6 +33,7 @@ type DialogState =
 
 export function ConfigureScreen({ state, dispatch }: Props) {
   const [dialog, setDialog] = useState<DialogState>({ mode: "closed" });
+  const [dialogKey, setDialogKey] = useState(0);
   const [isProcessing, setIsProcessing] = useState(false);
   const [processError, setProcessError] = useState<string | null>(null);
   const [jsonImportPending, setJsonImportPending] = useState(false);
@@ -212,7 +213,7 @@ export function ConfigureScreen({ state, dispatch }: Props) {
 
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-2">
-        <Button size="sm" onClick={() => setDialog({ mode: "add" })}>
+        <Button size="sm" onClick={() => { setDialog({ mode: "add" }); setDialogKey(k => k + 1); }}>
           <Plus className="mr-1 h-4 w-4" />
           Add Entry
         </Button>
@@ -294,7 +295,7 @@ export function ConfigureScreen({ state, dispatch }: Props) {
                         variant="ghost"
                         size="icon"
                         className="h-7 w-7"
-                        onClick={() => setDialog({ mode: "edit", index })}
+                        onClick={() => { setDialog({ mode: "edit", index }); setDialogKey(k => k + 1); }}
                         aria-label={`Edit ${entry.name}`}
                       >
                         <Pencil className="h-3.5 w-3.5" />
@@ -337,6 +338,7 @@ export function ConfigureScreen({ state, dispatch }: Props) {
 
       {/* Add / Edit dialog */}
       <AnnotateEntryDialog
+        key={dialogKey}
         open={dialog.mode !== "closed"}
         initialValues={editingEntry}
         onSubmit={dialog.mode === "add" ? handleAddSubmit : handleEditSubmit}
