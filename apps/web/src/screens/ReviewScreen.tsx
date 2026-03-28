@@ -8,7 +8,11 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { isEffectivelySuppressed } from "@/lib/match-utils";
-import { buildPositionAnnotatedMarkdown, downloadJson, downloadText } from "@/lib/export";
+import {
+  buildPositionAnnotatedMarkdown,
+  downloadJson,
+  downloadText,
+} from "@/lib/export";
 import { timestampPrefix } from "@/lib/timestamp";
 
 interface Props {
@@ -166,7 +170,6 @@ function MatchForm({ match, onAccept, onSkip, onReset }: MatchFormProps) {
 
 export function ReviewScreen({ state, dispatch }: Props) {
   const activeItemRef = useRef<HTMLButtonElement>(null);
-  const hasAutoExported = useRef(false);
 
   const { matches, currentMatchIndex } = state;
   const currentMatch = matches[currentMatchIndex];
@@ -184,15 +187,13 @@ export function ReviewScreen({ state, dispatch }: Props) {
     activeItemRef.current?.scrollIntoView({ block: "nearest" });
   }, [currentMatchIndex]);
 
-  // Auto-export once when all matches are decided and at least one was accepted
+  // Notify when all matches are decided and at least one was accepted
   useEffect(() => {
-    if (allDecided && acceptedCount > 0 && !hasAutoExported.current) {
-      hasAutoExported.current = true;
-      const ok = handleExportMarkdown();
-      if (ok) toast.success("Document exported!");
+    if (allDecided && acceptedCount > 0) {
+      toast.success("You can now export the file.", {
+        id: "all-decided",
+      });
     }
-    // handleExportMarkdown is stable for this one-shot use; ref guard makes stale closure safe
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [allDecided, acceptedCount]);
 
   // ---------------------------------------------------------------------------
@@ -224,7 +225,9 @@ export function ReviewScreen({ state, dispatch }: Props) {
       {
         markdown: state.markdown,
         matchesInfo: state.matches,
-        annotateEntries: state.annotateEntries.map(({ name, terms, parent }) => ({ name, terms, parent })),
+        annotateEntries: state.annotateEntries.map(
+          ({ name, terms, parent }) => ({ name, terms, parent }),
+        ),
       },
       `${timestampPrefix()}_session.json`,
     );
@@ -234,15 +237,16 @@ export function ReviewScreen({ state, dispatch }: Props) {
   // ---------------------------------------------------------------------------
   // Export annotated markdown
   function handleExportMarkdown(): boolean {
-    const accepted = matches.filter(m => m.status === 'accepted')
-    const result = buildPositionAnnotatedMarkdown(state.markdown, accepted)
+    const accepted = matches.filter((m) => m.status === "accepted");
+    const result = buildPositionAnnotatedMarkdown(state.markdown, accepted);
     if (!result.ok) {
       toast.error(result.error.message);
       return false;
     }
     const stem = state.sourceFilename
-      ? state.sourceFilename.slice(0, state.sourceFilename.lastIndexOf('.')) || 'noname'
-      : 'noname'
+      ? state.sourceFilename.slice(0, state.sourceFilename.lastIndexOf(".")) ||
+        "noname"
+      : "noname";
     downloadText(result.value, `${timestampPrefix()}_${stem}.md`);
     return true;
   }
@@ -311,8 +315,8 @@ export function ReviewScreen({ state, dispatch }: Props) {
         {/* Left: match list — height matches right column, scrollable */}
         <div className="w-56 shrink-0 overflow-y-auto pr-1 self-stretch h-[426px] border-2 border-solid">
           {matches.map((match, index) => {
-            const isActive = index === currentMatchIndex
-            const suppressed = isEffectivelySuppressed(match, matches)
+            const isActive = index === currentMatchIndex;
+            const suppressed = isEffectivelySuppressed(match, matches);
             return (
               <button
                 key={match.id}
@@ -334,22 +338,28 @@ export function ReviewScreen({ state, dispatch }: Props) {
                     active={isActive}
                     suppressed={suppressed}
                   />
-                  <span className="truncate font-medium">{match.sourceName}</span>
+                  <span className="truncate font-medium">
+                    {match.sourceName}
+                  </span>
                 </div>
                 <div className="truncate text-xs mt-0.5 opacity-70 font-mono">
                   {match.matchedTerm}
                 </div>
               </button>
-            )
+            );
           })}
         </div>
 
         {/* Right: per-match form — key forces remount on navigation or status change */}
-        <div key={`${currentMatchIndex}-${currentMatch?.status ?? ''}`} className="flex-1 min-w-0">
+        <div
+          key={`${currentMatchIndex}-${currentMatch?.status ?? ""}`}
+          className="flex-1 min-w-0"
+        >
           {currentMatch ? (
             isEffectivelySuppressed(currentMatch, matches) ? (
               <p className="text-sm text-muted-foreground p-1">
-                This match is suppressed — another match was accepted at this location.
+                This match is suppressed — another match was accepted at this
+                location.
               </p>
             ) : (
               <MatchForm
@@ -366,15 +376,6 @@ export function ReviewScreen({ state, dispatch }: Props) {
           )}
         </div>
       </div>
-
-      {allDecided && (
-        <p className="text-sm text-green-600">
-          All matches reviewed.{" "}
-          {acceptedCount > 0
-            ? 'Click "Export .md" to download the annotated document.'
-            : "No matches accepted — nothing to export."}
-        </p>
-      )}
     </div>
   );
 }
