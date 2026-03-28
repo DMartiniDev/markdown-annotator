@@ -107,12 +107,14 @@ function collectMatchesForTerm(
       const matchedTerm = m[0]
 
       // Context: surrounding raw markdown around the image node itself.
-      // Image alt text positions cannot be reliably mapped to raw markdown byte offsets,
-      // so docStart/docEnd are set to -1 (sentinel) — these matches are excluded from suppression.
+      // Image alt text positions cannot be reliably mapped to raw markdown byte offsets
+      // (node.alt is the flattened parsed text, not the raw source), so docStart/docEnd
+      // are -1. imageNodeOffset records the '!' position so export can do raw alt-text
+      // replacement without a parse/stringify cycle.
       result.push(buildMatchInfo(entry, matchedTerm, inFootnote, {
         before: markdown.slice(Math.max(0, imgDocOffset - CONTEXT_CHARS), imgDocOffset),
         after: markdown.slice(imgDocOffset, Math.min(markdown.length, imgDocOffset + CONTEXT_CHARS)),
-      }, -1, -1))
+      }, -1, -1, imgDocOffset))
     }
   })
 
@@ -126,6 +128,7 @@ function buildMatchInfo(
   context: { before: string; after: string },
   docStart: number,
   docEnd: number,
+  imageNodeOffset = -1,
 ): MatchInfo {
   return {
     id: crypto.randomUUID(),
@@ -137,6 +140,7 @@ function buildMatchInfo(
     matchedTerm,
     docStart,
     docEnd,
+    imageNodeOffset,
     entryId: entry.id,
     contextBefore: context.before,
     contextAfter: context.after,

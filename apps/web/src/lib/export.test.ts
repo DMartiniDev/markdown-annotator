@@ -11,6 +11,7 @@ function makeMatch(overrides: Partial<MatchInfo>): MatchInfo {
     matchedTerm: 'test',
     docStart: 0,
     docEnd: 4,
+    imageNodeOffset: -1,
     entryId: 'entry-1',
     contextBefore: '',
     contextAfter: '',
@@ -157,19 +158,51 @@ describe('buildPositionAnnotatedMarkdown', () => {
     expect(result.value).toContain('entryText="TestEntry"')
   })
 
-  it('calls Phase 2 for image alt-text matches and annotates the alt text', () => {
+  it('annotates image alt text via imageNodeOffset (new path) — preserves surrounding content verbatim', () => {
+    // Regression: complex alt text with HTML, markdown formatting, citation brackets
+    const md = [
+      'Aqui hay contenido',
+      '',
+      '![<kbd class="anchortct" title="test"></kbd>La _Revista_ anunció una ponencia [@cite, 11]](img.png)',
+      '',
+      'Aquí hay más contenido',
+    ].join('\n')
+    const imageNodeOffset = md.indexOf('!')
+    const imageMatch = makeMatch({
+      matchedTerm: 'ponencia',
+      docStart: -1,
+      docEnd: -1,
+      imageNodeOffset,
+      name: 'ponencia',
+    })
+    const result = buildPositionAnnotatedMarkdown(md, [imageMatch])
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    // Annotation injected
+    expect(result.value).toContain('entryText="ponencia"')
+    expect(result.value).toContain('>ponencia</kbd>')
+    // Surrounding alt text preserved verbatim — no escaping
+    expect(result.value).toContain('<kbd class="anchortct" title="test">')
+    expect(result.value).toContain('</kbd>')
+    expect(result.value).toContain('_Revista_')
+    expect(result.value).toContain('[@cite, 11]')
+    expect(result.value).not.toContain('\\<kbd')
+    expect(result.value).not.toContain('\\[@')
+  })
+
+  it('legacy: annotates image alt text via annotateMarkdownBatch when imageNodeOffset === -1', () => {
     const md = '![AI](image.png)\n'
     const imageMatch = makeMatch({
       matchedTerm: 'AI',
       docStart: -1,
       docEnd: -1,
+      // imageNodeOffset defaults to -1 → legacy fallback
       name: 'Artificial Intelligence',
       entryId: 'entry-A',
     })
     const result = buildPositionAnnotatedMarkdown(md, [imageMatch])
     expect(result.ok).toBe(true)
     if (!result.ok) return
-    // Library should have annotated the image alt text
     expect(result.value).toContain('entryText="Artificial Intelligence"')
   })
 
@@ -183,11 +216,13 @@ describe('buildPositionAnnotatedMarkdown', () => {
       name: 'Artificial Intelligence',
       entryId: 'entry-A',
     })
-    // "AI" image match (docStart: -1)
+    // "AI" image match using imageNodeOffset
+    const imageNodeOffset = md.indexOf('!')
     const imageMatch = makeMatch({
       matchedTerm: 'AI',
       docStart: -1,
       docEnd: -1,
+      imageNodeOffset,
       name: 'AI Protocol',
       entryId: 'entry-B',
     })

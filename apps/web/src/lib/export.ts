@@ -1,5 +1,5 @@
 import type { MatchInfo } from '@/types'
-import { annotateMarkdownBatch } from '@index-helper2/markdown-annotator'
+import { annotateMarkdownBatch, buildRegex } from '@index-helper2/markdown-annotator'
 import type { AnnotateInfo, Result } from '@index-helper2/markdown-annotator'
 
 /**
@@ -64,37 +64,95 @@ export function buildKbdFromMatch(match: MatchInfo): string {
 /**
  * Builds position-aware annotated markdown from accepted matches.
  *
- * Phase 1: injects <kbd> tags directly at docStart/docEnd byte offsets for text
- * matches (sorted descending so earlier offsets stay valid after each insertion).
+ * All matches with known document positions (text matches via docStart/docEnd,
+ * image alt-text matches via imageNodeOffset) are sorted descending by position
+ * and processed in a single pass — tail-first so earlier offsets remain valid
+ * after each insertion.
  *
- * Phase 2: delegates image alt-text matches (docStart === -1) to
- * annotateMarkdownBatch. Skipped entirely when there are no image matches to
- * avoid an unnecessary parse+stringify cycle that could reformat the document.
+ * Legacy fallback: image matches with imageNodeOffset === -1 (sessions saved
+ * before this fix) are delegated to annotateMarkdownBatch. This preserves
+ * backward compatibility at the cost of the known alt-text corruption for those
+ * old sessions.
  */
 export function buildPositionAnnotatedMarkdown(
   markdown: string,
   acceptedMatches: MatchInfo[],
 ): Result<string> {
-  // Phase 1: direct splice for text matches, tail-first to preserve earlier offsets
-  const textMatches = acceptedMatches
-    .filter(m => m.docStart >= 0)
-    .sort((a, b) => b.docStart - a.docStart)
+  // Separate legacy image matches (no position data) from positioned matches
+  const legacyImageMatches = acceptedMatches.filter(
+    m => m.docStart === -1 && m.imageNodeOffset === -1,
+  )
+  const positionedMatches = acceptedMatches.filter(
+    m => m.docStart >= 0 || m.imageNodeOffset >= 0,
+  )
+
+  // Unified descending sort: use docStart for text matches, imageNodeOffset for image matches
+  const sorted = [...positionedMatches].sort((a, b) => {
+    const posA = a.docStart >= 0 ? a.docStart : a.imageNodeOffset
+    const posB = b.docStart >= 0 ? b.docStart : b.imageNodeOffset
+    return posB - posA
+  })
 
   let result = markdown
-  for (const m of textMatches) {
-    result = result.slice(0, m.docStart) + buildKbdFromMatch(m) + result.slice(m.docEnd)
+  for (const m of sorted) {
+    if (m.docStart >= 0) {
+      // Text match: direct splice at byte offsets
+      result = result.slice(0, m.docStart) + buildKbdFromMatch(m) + result.slice(m.docEnd)
+    } else {
+      // Image alt-text match: raw string replacement within the alt text
+      result = injectIntoImageAlt(result, m)
+    }
   }
 
-  // Phase 2: library handles image alt-text matches (no byte-offset available)
-  const imageMatches = acceptedMatches.filter(m => m.docStart === -1)
-  if (imageMatches.length === 0) return { ok: true, value: result }
+  // Legacy fallback for sessions imported before this fix
+  if (legacyImageMatches.length === 0) return { ok: true, value: result }
 
-  const imageEntries: AnnotateInfo[] = imageMatches.map(m => ({
+  const legacyEntries: AnnotateInfo[] = legacyImageMatches.map(m => ({
     name: m.name,
     terms: [m.matchedTerm],
     parent: m.parent,
     isImportant: m.important,
     isFootnote: false,
   }))
-  return annotateMarkdownBatch(result, imageEntries)
+  return annotateMarkdownBatch(result, legacyEntries)
+}
+
+/**
+ * Injects a <kbd> tag for `match.matchedTerm` into the raw alt text of the image
+ * at `match.imageNodeOffset` in `markdown`.
+ *
+ * Uses bracket-counting to locate the alt text boundaries, then buildRegex to
+ * find the term within the raw alt text. Splices the <kbd> tag in place.
+ *
+ * Returns `markdown` unchanged if the image syntax or term is not found at the
+ * expected location.
+ */
+function injectIntoImageAlt(markdown: string, match: MatchInfo): string {
+  const imgStart = match.imageNodeOffset
+  // Verify the image starts with '!['
+  if (markdown[imgStart] !== '!' || markdown[imgStart + 1] !== '[') return markdown
+
+  // Bracket-count scan: find the closing ']' of the alt text
+  // The '[' at imgStart+1 opens the alt (depth starts at 1)
+  let depth = 1
+  let i = imgStart + 2
+  while (i < markdown.length && depth > 0) {
+    if (markdown[i] === '[') depth++
+    else if (markdown[i] === ']') depth--
+    if (depth > 0) i++
+    else break
+  }
+  const altEnd = i // index of the closing ']'
+  const rawAlt = markdown.slice(imgStart + 2, altEnd)
+
+  // Find matchedTerm in rawAlt using word-boundary regex
+  const re = buildRegex(match.matchedTerm)
+  re.lastIndex = 0
+  const termMatch = re.exec(rawAlt)
+  if (!termMatch) return markdown // term not found — leave unchanged
+
+  const absStart = imgStart + 2 + termMatch.index
+  const absEnd = absStart + termMatch[0].length
+
+  return markdown.slice(0, absStart) + buildKbdFromMatch(match) + markdown.slice(absEnd)
 }

@@ -22,6 +22,7 @@ export type MatchInfo = {
   matchedTerm: string   // the specific term string found in the document
   docStart: number      // raw markdown byte offset of match start; -1 for image alt text
   docEnd: number        // raw markdown byte offset of match end; -1 for image alt text
+  imageNodeOffset: number // raw markdown byte offset of the image node's '!'; -1 if not applicable
   entryId: string       // WebAnnotateInfo.id of the source annotation entry
   contextBefore: string // ~200 chars of markdown text before the match
   contextAfter: string  // ~200 chars of markdown text after the match
