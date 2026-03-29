@@ -248,6 +248,8 @@ describe('findMatches', () => {
         matchedTerm: 'term',
         docStart: 10,
         docEnd: 14,
+        imageNodeOffset: -1,
+        altOccurrenceIndex: 0,
         entryId: 'entry-1',
         contextBefore: '',
         contextAfter: '',
