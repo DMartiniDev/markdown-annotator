@@ -101,19 +101,40 @@ function collectMatchesForTerm(
     const inFootnote = ancestors.some(a => a.type === 'footnoteDefinition')
     const imgDocOffset = node.position?.start.offset ?? 0
 
+    // Extract raw alt text via bracket-counting scan (same as export pre-computation).
+    // Searching the raw source instead of node.alt allows the unclosed-kbd guard below
+    // to detect already-annotated occurrences — node.alt strips all HTML tags and cannot
+    // distinguish annotated from plain text.
+    let depth = 1
+    let i = imgDocOffset + 2
+    while (i < markdown.length && depth > 0) {
+      if (markdown[i] === '[') depth++
+      else if (markdown[i] === ']') depth--
+      if (depth > 0) i++
+      else break
+    }
+    const rawAlt = markdown.slice(imgDocOffset + 2, i)
+
     re.lastIndex = 0
     let m: RegExpExecArray | null
     let occurrenceIndex = 0
-    while ((m = re.exec(node.alt)) !== null) {
+    while ((m = re.exec(rawAlt)) !== null) {
+      // Unclosed-kbd guard: skip occurrences that fall inside an existing <kbd> element.
+      // Count <kbd and </kbd> tags in the prefix; if more opens than closes, this match
+      // is inside an already-annotated span and should not produce a new pending match.
+      const before = rawAlt.slice(0, m.index)
+      const openKbds = (before.match(/<kbd\b/gi) ?? []).length
+      const closeKbds = (before.match(/<\/kbd>/gi) ?? []).length
+      if (openKbds > closeKbds) continue // inside existing <kbd> — skip
+
       const matchedTerm = m[0]
 
       // Context: surrounding raw markdown around the image node itself.
-      // Image alt text positions cannot be reliably mapped to raw markdown byte offsets
-      // (node.alt is the flattened parsed text, not the raw source), so docStart/docEnd
-      // are -1. imageNodeOffset records the '!' position so export can do raw alt-text
+      // docStart/docEnd are -1 (raw alt offsets cannot be used as doc offsets).
+      // imageNodeOffset records the '!' position so export can do raw alt-text
       // replacement without a parse/stringify cycle.
-      // altOccurrenceIndex records which occurrence of this term within the alt text
-      // this match was found as, enabling correct position assignment at export time.
+      // altOccurrenceIndex records which non-guarded occurrence of this term within the
+      // alt text this match was found as, enabling correct position assignment at export time.
       result.push(buildMatchInfo(entry, matchedTerm, inFootnote, {
         before: markdown.slice(Math.max(0, imgDocOffset - CONTEXT_CHARS), imgDocOffset),
         after: markdown.slice(imgDocOffset, Math.min(markdown.length, imgDocOffset + CONTEXT_CHARS)),

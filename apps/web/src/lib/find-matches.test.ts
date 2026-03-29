@@ -361,6 +361,22 @@ describe('findMatches', () => {
     expect(imageMatches[1].altOccurrenceIndex).toBe(1)
   })
 
+  it('finds 0 matches when all occurrences are already annotated in image alt text', () => {
+    const kbd = `<kbd title="En el índice analítico como 'monitos'" class="indexEntrytct" entryText="monitos">monitos</kbd>`
+    const md = `![Los ${kbd} son muy guapos. Viva los ${kbd}. En las montañas](img.png)`
+    const matches = findMatches(md, [entry({ terms: ['monitos'] })])
+    expect(matches.filter(m => m.imageNodeOffset >= 0)).toHaveLength(0)
+  })
+
+  it('finds 1 match when one of two occurrences is already annotated in image alt text', () => {
+    const kbd = `<kbd title="En el índice analítico como 'monitos'" class="indexEntrytct" entryText="monitos">monitos</kbd>`
+    const md = `![Los ${kbd} son muy guapos. Viva los monitos. En las montañas](img.png)`
+    const matches = findMatches(md, [entry({ terms: ['monitos'] })])
+    const imageMatches = matches.filter(m => m.imageNodeOffset >= 0)
+    expect(imageMatches).toHaveLength(1)
+    expect(imageMatches[0].altOccurrenceIndex).toBe(0)
+  })
+
   it('handles unicode terms with accented characters', () => {
     const md = 'El niño juega en el jardín'
     const matches = findMatches(md, [entry({ terms: ['niño'] })])

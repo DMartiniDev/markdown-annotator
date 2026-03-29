@@ -117,7 +117,11 @@ export function buildPositionAnnotatedMarkdown(
       }
       const rawAlt = markdown.slice(imgStart + 2, i)
 
-      // Find all occurrences of each unique term in the original rawAlt
+      // Find all non-annotated occurrences of each unique term in rawAlt.
+      // The unclosed-kbd guard (same logic as the image visitor in find-matches.ts)
+      // skips positions that fall inside existing <kbd> elements. This keeps the
+      // occurrence indices aligned with the altOccurrenceIndex values assigned at
+      // match-finding time — both phases must skip the same positions.
       const termOccurrences = new Map<string, Array<{ start: number; end: number }>>()
       for (const term of [...new Set(group.map(m => m.matchedTerm))]) {
         const re = buildRegex(term)
@@ -125,6 +129,12 @@ export function buildPositionAnnotatedMarkdown(
         const occurrences: Array<{ start: number; end: number }> = []
         let match: RegExpExecArray | null
         while ((match = re.exec(rawAlt)) !== null) {
+          // Unclosed-kbd guard: skip matches inside existing <kbd> elements
+          const before = rawAlt.slice(0, match.index)
+          const openKbds = (before.match(/<kbd\b/gi) ?? []).length
+          const closeKbds = (before.match(/<\/kbd>/gi) ?? []).length
+          if (openKbds > closeKbds) continue
+
           occurrences.push({ start: match.index, end: match.index + match[0].length })
         }
         termOccurrences.set(term, occurrences)

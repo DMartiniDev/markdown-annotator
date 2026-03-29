@@ -239,6 +239,25 @@ describe('buildPositionAnnotatedMarkdown', () => {
     expect(kbdCount).toBe(2)
   })
 
+  it('correctly annotates the remaining unannotated occurrence in partially-annotated alt text', () => {
+    const kbd = `<kbd title="En el índice analítico como 'monitos'" class="indexEntrytct" entryText="monitos">monitos</kbd>`
+    const md = `![Los ${kbd} son muy guapos. Viva los monitos. En las montañas](img.png)`
+    const imageNodeOffset = md.indexOf('!')
+    // find-matches assigns altOccurrenceIndex: 0 to the first non-annotated occurrence
+    const result = buildPositionAnnotatedMarkdown(md, [
+      makeMatch({ name: 'monitos', matchedTerm: 'monitos', docStart: -1, docEnd: -1, imageNodeOffset, altOccurrenceIndex: 0 }),
+    ])
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    // Two kbds total: one from input, one newly injected
+    const kbdCount = (result.value.match(/<kbd\b/g) ?? []).length
+    expect(kbdCount).toBe(2)
+    // The first (already-annotated) kbd is preserved intact
+    expect(result.value).toContain(`Los ${kbd}`)
+    // The second occurrence is now also annotated
+    expect(result.value).toContain('Viva los <kbd')
+  })
+
   it('legacy: annotates image alt text via annotateMarkdownBatch when imageNodeOffset === -1', () => {
     const md = '![AI](image.png)\n'
     const imageMatch = makeMatch({
