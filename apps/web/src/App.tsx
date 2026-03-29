@@ -70,7 +70,12 @@ export function App() {
       <main className="container mx-auto max-w-5xl px-4 py-8 flex-1">
         <div className="flex items-start justify-between mb-2">
           <div>
-            <h1 className="text-2xl font-bold">Markdown Annotator</h1>
+            <h1
+              className={`text-2xl font-bold${state.screen !== 'input' ? ' cursor-pointer hover:underline' : ''}`}
+              onClick={state.screen !== 'input' ? () => dispatch({ type: 'BACK_TO_INPUT' }) : undefined}
+            >
+              Markdown Annotator
+            </h1>
             <p className="mt-1 text-sm text-muted-foreground">
               Annotate terms in markdown with{" "}
               <code className="rounded bg-muted px-1 py-0.5 text-xs">
