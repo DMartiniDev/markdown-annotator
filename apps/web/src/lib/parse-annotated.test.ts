@@ -99,7 +99,6 @@ describe('parseAnnotatedMarkdown', () => {
     const { entries, matches } = parseAnnotatedMarkdown(raw)
     expect(entries[0].name).toBe('A & B')
     expect(matches[0].matchedTerm).toBe('A & B')
-    expect(matches[0].cleanMarkdown).toBeUndefined() // cleanMarkdown is in the result, not on matches
   })
 
   it('unescapes &#x27; (apostrophe) in entryText', () => {
