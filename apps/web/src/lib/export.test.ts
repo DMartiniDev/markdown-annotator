@@ -12,6 +12,7 @@ function makeMatch(overrides: Partial<MatchInfo>): MatchInfo {
     docStart: 0,
     docEnd: 4,
     imageNodeOffset: -1,
+    altOccurrenceIndex: 0,
     entryId: 'entry-1',
     contextBefore: '',
     contextAfter: '',
@@ -188,6 +189,54 @@ describe('buildPositionAnnotatedMarkdown', () => {
     expect(result.value).toContain('[@cite, 11]')
     expect(result.value).not.toContain('\\<kbd')
     expect(result.value).not.toContain('\\[@')
+  })
+
+  it('annotates both occurrences when same term appears twice in image alt text and both are accepted', () => {
+    const md = '![Los monitos son muy guapos. Viva los monitos. En las montañas](img.png)'
+    const imageNodeOffset = md.indexOf('!')
+    const result = buildPositionAnnotatedMarkdown(md, [
+      makeMatch({ name: 'monitos', matchedTerm: 'monitos', docStart: -1, docEnd: -1, imageNodeOffset, altOccurrenceIndex: 0 }),
+      makeMatch({ name: 'monitos', matchedTerm: 'monitos', docStart: -1, docEnd: -1, imageNodeOffset, altOccurrenceIndex: 1 }),
+    ])
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    // Both occurrences annotated
+    const kbdCount = (result.value.match(/<kbd\b/g) ?? []).length
+    expect(kbdCount).toBe(2)
+    // No nesting
+    expect(result.value).not.toMatch(/<kbd\b[^>]*>[^<]*<kbd/)
+    // No term injected into a title attribute
+    expect(result.value).not.toContain("como '<kbd")
+  })
+
+  it('annotates the second occurrence when only the second is accepted (altOccurrenceIndex: 1)', () => {
+    const md = '![monitos and more monitos here](img.png)'
+    const imageNodeOffset = md.indexOf('!')
+    const result = buildPositionAnnotatedMarkdown(md, [
+      makeMatch({ name: 'monitos', matchedTerm: 'monitos', docStart: -1, docEnd: -1, imageNodeOffset, altOccurrenceIndex: 1 }),
+    ])
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    // Only one kbd
+    const kbdCount = (result.value.match(/<kbd\b/g) ?? []).length
+    expect(kbdCount).toBe(1)
+    // The second "monitos" (in "more monitos") is annotated, not the first
+    expect(result.value).toContain('![monitos and more ')
+    expect(result.value).toContain('>monitos</kbd> here]')
+  })
+
+  it('annotates the same term independently in two separate images', () => {
+    const md = '![monitos here](a.png)\n\n![monitos there](b.png)'
+    const img1Offset = md.indexOf('!')
+    const img2Offset = md.lastIndexOf('!')
+    const result = buildPositionAnnotatedMarkdown(md, [
+      makeMatch({ name: 'monitos', matchedTerm: 'monitos', docStart: -1, docEnd: -1, imageNodeOffset: img1Offset, altOccurrenceIndex: 0 }),
+      makeMatch({ name: 'monitos', matchedTerm: 'monitos', docStart: -1, docEnd: -1, imageNodeOffset: img2Offset, altOccurrenceIndex: 0 }),
+    ])
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    const kbdCount = (result.value.match(/<kbd\b/g) ?? []).length
+    expect(kbdCount).toBe(2)
   })
 
   it('legacy: annotates image alt text via annotateMarkdownBatch when imageNodeOffset === -1', () => {

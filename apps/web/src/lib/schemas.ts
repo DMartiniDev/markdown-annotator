@@ -34,6 +34,7 @@ export const MatchInfoSchema = z.object({
   docStart: z.number().int().default(-1),
   docEnd: z.number().int().default(-1),
   imageNodeOffset: z.number().int().default(-1),
+  altOccurrenceIndex: z.number().int().default(0),
   entryId: z.string().default(''),
   contextBefore: z.string().max(500),
   contextAfter: z.string().max(500),

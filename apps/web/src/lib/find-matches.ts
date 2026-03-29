@@ -103,6 +103,7 @@ function collectMatchesForTerm(
 
     re.lastIndex = 0
     let m: RegExpExecArray | null
+    let occurrenceIndex = 0
     while ((m = re.exec(node.alt)) !== null) {
       const matchedTerm = m[0]
 
@@ -111,10 +112,12 @@ function collectMatchesForTerm(
       // (node.alt is the flattened parsed text, not the raw source), so docStart/docEnd
       // are -1. imageNodeOffset records the '!' position so export can do raw alt-text
       // replacement without a parse/stringify cycle.
+      // altOccurrenceIndex records which occurrence of this term within the alt text
+      // this match was found as, enabling correct position assignment at export time.
       result.push(buildMatchInfo(entry, matchedTerm, inFootnote, {
         before: markdown.slice(Math.max(0, imgDocOffset - CONTEXT_CHARS), imgDocOffset),
         after: markdown.slice(imgDocOffset, Math.min(markdown.length, imgDocOffset + CONTEXT_CHARS)),
-      }, -1, -1, imgDocOffset))
+      }, -1, -1, imgDocOffset, occurrenceIndex++))
     }
   })
 
@@ -129,6 +132,7 @@ function buildMatchInfo(
   docStart: number,
   docEnd: number,
   imageNodeOffset = -1,
+  altOccurrenceIndex = 0,
 ): MatchInfo {
   return {
     id: crypto.randomUUID(),
@@ -141,6 +145,7 @@ function buildMatchInfo(
     docStart,
     docEnd,
     imageNodeOffset,
+    altOccurrenceIndex,
     entryId: entry.id,
     contextBefore: context.before,
     contextAfter: context.after,

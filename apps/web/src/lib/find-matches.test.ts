@@ -350,6 +350,15 @@ describe('findMatches', () => {
     expect(matches[0].matchedTerm).toBe('term')
   })
 
+  it('sets altOccurrenceIndex for multiple occurrences of the same term in image alt text', () => {
+    const md = '![monitos and more monitos here](img.png)'
+    const matches = findMatches(md, [entry({ terms: ['monitos'] })])
+    const imageMatches = matches.filter(m => m.imageNodeOffset >= 0)
+    expect(imageMatches).toHaveLength(2)
+    expect(imageMatches[0].altOccurrenceIndex).toBe(0)
+    expect(imageMatches[1].altOccurrenceIndex).toBe(1)
+  })
+
   it('handles unicode terms with accented characters', () => {
     const md = 'El niño juega en el jardín'
     const matches = findMatches(md, [entry({ terms: ['niño'] })])
