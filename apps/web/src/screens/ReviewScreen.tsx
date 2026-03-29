@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { Download } from "lucide-react";
 import { toast } from "sonner";
 import type { AppState, Action, MatchInfo } from "@/types";
@@ -170,6 +171,7 @@ function MatchForm({ match, onAccept, onSkip, onReset }: MatchFormProps) {
 
 export function ReviewScreen({ state, dispatch }: Props) {
   const activeItemRef = useRef<HTMLButtonElement>(null);
+  const [confirmAllOpen, setConfirmAllOpen] = useState(false);
 
   const { matches, currentMatchIndex } = state;
   const currentMatch = matches[currentMatchIndex];
@@ -214,6 +216,11 @@ export function ReviewScreen({ state, dispatch }: Props) {
 
   function handleReset() {
     dispatch({ type: "RESET_MATCH" });
+  }
+
+  function handleAcceptAll() {
+    dispatch({ type: "ACCEPT_ALL_PENDING" });
+    setConfirmAllOpen(false);
   }
 
   // ---------------------------------------------------------------------------
@@ -350,32 +357,52 @@ export function ReviewScreen({ state, dispatch }: Props) {
           })}
         </div>
 
-        {/* Right: per-match form — key forces remount on navigation or status change */}
-        <div
-          key={`${currentMatchIndex}-${currentMatch?.status ?? ""}`}
-          className="flex-1 min-w-0"
-        >
-          {currentMatch ? (
-            isEffectivelySuppressed(currentMatch, matches) ? (
-              <p className="text-sm text-muted-foreground p-1">
-                This match is suppressed — another match was accepted at this
-                location.
-              </p>
+        {/* Right: per-match form + Accept All */}
+        <div className="flex-1 min-w-0 flex flex-col gap-3">
+          {/* key forces remount on navigation or status change */}
+          <div key={`${currentMatchIndex}-${currentMatch?.status ?? ""}`}>
+            {currentMatch ? (
+              isEffectivelySuppressed(currentMatch, matches) ? (
+                <p className="text-sm text-muted-foreground p-1">
+                  This match is suppressed — another match was accepted at this
+                  location.
+                </p>
+              ) : (
+                <MatchForm
+                  match={currentMatch}
+                  onAccept={handleAccept}
+                  onSkip={handleSkip}
+                  onReset={handleReset}
+                />
+              )
             ) : (
-              <MatchForm
-                match={currentMatch}
-                onAccept={handleAccept}
-                onSkip={handleSkip}
-                onReset={handleReset}
-              />
-            )
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              Select a match to review.
-            </p>
-          )}
+              <p className="text-sm text-muted-foreground">
+                Select a match to review.
+              </p>
+            )}
+          </div>
+
+          <div className="flex justify-end">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setConfirmAllOpen(true)}
+              disabled={pendingCount === 0}
+            >
+              Accept All
+            </Button>
+          </div>
         </div>
       </div>
+
+      <ConfirmDialog
+        open={confirmAllOpen}
+        title="Accept all matches?"
+        description={`This will accept all ${pendingCount} pending ${pendingCount === 1 ? "match" : "matches"} using their default values. Suppressed and skipped matches will not be affected.`}
+        confirmLabel="Accept All"
+        onConfirm={handleAcceptAll}
+        onCancel={() => setConfirmAllOpen(false)}
+      />
     </div>
   );
 }

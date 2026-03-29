@@ -50,6 +50,7 @@ export type Action =
   | { type: 'ACCEPT_MATCH'; payload: { name: string; parent?: string; important: boolean } }
   | { type: 'SKIP_MATCH' }
   | { type: 'RESET_MATCH' }
+  | { type: 'ACCEPT_ALL_PENDING' }
   | { type: 'SET_CURRENT_INDEX'; payload: number }
   | { type: 'IMPORT_SESSION'; payload: { matches: MatchInfo[]; markdown: string; annotateEntries: WebAnnotateInfo[] } }
   | { type: 'MERGE_MATCHES'; payload: { newMatches: MatchInfo[]; priorMatches: MatchInfo[] } }
@@ -109,6 +110,22 @@ export function appReducer(state: AppState, action: Action): AppState {
       )
       // Do not advance index — user stays on the newly-restored match
       return { ...state, matches: updated }
+    }
+
+    case 'ACCEPT_ALL_PENDING': {
+      // Walk matches in array order, accepting each non-suppressed pending match.
+      // Use a progressively-updated running array so that accepting match A correctly
+      // suppresses overlapping match B in the same pass.
+      const running: MatchInfo[] = [...state.matches]
+      const updated = state.matches.map((m, i) => {
+        if (m.status !== 'pending') return m
+        if (isEffectivelySuppressed(m, running)) return m
+        const accepted = { ...m, status: 'accepted' as MatchStatus }
+        running[i] = accepted
+        return accepted
+      })
+      const nextIndex = findNextPendingIndex(updated, state.currentMatchIndex)
+      return { ...state, matches: updated, currentMatchIndex: nextIndex }
     }
 
     case 'SET_CURRENT_INDEX':
