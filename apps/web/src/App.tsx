@@ -1,5 +1,5 @@
 import { useReducer, useRef, useState } from "react";
-import { Upload, Sun, Moon, Monitor, Heart } from "lucide-react";
+import { Upload, FileInput, Sun, Moon, Monitor, Heart } from "lucide-react";
 import { Toaster, toast } from "sonner";
 import { appReducer, INITIAL_STATE } from "@/types";
 import { MarkdownInputScreen } from "@/screens/MarkdownInputScreen";
@@ -8,7 +8,10 @@ import { ReviewScreen } from "@/screens/ReviewScreen";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { SessionSchema } from "@/lib/schemas";
+import { parseAnnotatedMarkdown } from "@/lib/parse-annotated";
 import { useTheme, type Theme } from "@/hooks/use-theme";
+
+const MAX_ANNOTATED_FILE_SIZE = 2 * 1024 * 1024 // 2MB
 
 const NEXT_THEME: Record<Theme, Theme> = {
   system: "light",
@@ -24,8 +27,55 @@ const THEME_LABEL: Record<Theme, string> = {
 export function App() {
   const [state, dispatch] = useReducer(appReducer, INITIAL_STATE);
   const importInputRef = useRef<HTMLInputElement>(null);
+  const annotatedImportRef = useRef<HTMLInputElement>(null);
   const [sessionImportPending, setSessionImportPending] = useState(false);
+  const [annotatedImportPending, setAnnotatedImportPending] = useState(false);
   const { theme, setTheme } = useTheme();
+
+  function handleImportAnnotated(file: File | undefined) {
+    if (!file) return;
+    if (file.size > MAX_ANNOTATED_FILE_SIZE) {
+      toast.error("File is too large. Maximum size is 2MB.");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const text = e.target?.result;
+      if (typeof text !== "string") {
+        toast.error("Could not read file.");
+        return;
+      }
+      const result = parseAnnotatedMarkdown(text);
+      if (result.matches.length === 0) {
+        toast.error("No annotated terms found in this file.");
+        return;
+      }
+      dispatch({
+        type: "IMPORT_SESSION",
+        payload: {
+          matches: result.matches,
+          markdown: result.cleanMarkdown,
+          annotateEntries: result.entries,
+        },
+      });
+      dispatch({ type: "SET_SOURCE_FILENAME", payload: file.name });
+      dispatch({ type: "GO_TO_SCREEN", payload: "review" });
+      toast.success(
+        `Imported ${result.matches.length} annotation${result.matches.length !== 1 ? "s" : ""}.`,
+      );
+    };
+    reader.onerror = () => toast.error("Failed to read file. Please try again.");
+    reader.readAsText(file);
+    if (annotatedImportRef.current) annotatedImportRef.current.value = "";
+  }
+
+  function triggerAnnotatedImport() {
+    if (state.markdown.trim().length > 0 || state.annotateEntries.length > 0) {
+      setAnnotatedImportPending(true);
+    } else {
+      annotatedImportRef.current?.click();
+    }
+  }
 
   function handleImportSession(file: File | undefined) {
     if (!file) return;
@@ -101,6 +151,21 @@ export function App() {
               onChange={(e) => handleImportSession(e.target.files?.[0])}
             />
             <Button
+              variant="outline"
+              size="sm"
+              onClick={triggerAnnotatedImport}
+            >
+              <FileInput className="mr-1 h-3.5 w-3.5" />
+              Import annotated .md
+            </Button>
+            <input
+              ref={annotatedImportRef}
+              type="file"
+              accept=".md,.markdown"
+              className="hidden"
+              onChange={(e) => handleImportAnnotated(e.target.files?.[0])}
+            />
+            <Button
               variant="ghost"
               size="icon"
               onClick={() => setTheme(NEXT_THEME[theme])}
@@ -135,6 +200,16 @@ export function App() {
             importInputRef.current?.click();
           }}
           onCancel={() => setSessionImportPending(false)}
+        />
+        <ConfirmDialog
+          open={annotatedImportPending}
+          title="Replace current session?"
+          description="Importing an annotated file will overwrite your current markdown, annotation config, and review decisions."
+          onConfirm={() => {
+            setAnnotatedImportPending(false);
+            annotatedImportRef.current?.click();
+          }}
+          onCancel={() => setAnnotatedImportPending(false)}
         />
         <Toaster />
       </main>

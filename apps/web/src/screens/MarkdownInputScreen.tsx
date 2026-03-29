@@ -215,6 +215,7 @@ export function MarkdownInputScreen({ state, dispatch }: Props) {
           Next: Configure Annotations →
         </Button>
       </div>
+
     </div>
   )
 }
